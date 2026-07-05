@@ -282,6 +282,14 @@ export function buildUpstairs(scene) {
   md(new THREE.BoxGeometry(0.4, 0.34, 0.3), smat(0x6a9a4a, { emissive: 0x1a2a12 }), 4.2, 1.85, 0.05); // 虫かご
   md(new THREE.BoxGeometry(0.42, 0.05, 0.32), smat(0x3a5a2a), 4.2, 2.04, 0.05);
 
+  // おしいれ (ふすまの おくに、じいちゃんの わすれものが ねむっとる)
+  md(new THREE.BoxGeometry(0.7, 2.5, 2.1), woodDark, 4.2, 1.25, 2.5); // はこがわ
+  md(new THREE.BoxGeometry(0.06, 2.26, 0.98), smat(0xf2ecd8), 3.82, 1.23, 2.02); // ふすま (てまえ)
+  md(new THREE.BoxGeometry(0.06, 2.26, 0.98), smat(0xe8e0c6), 3.88, 1.23, 2.98); // ふすま (おく)
+  md(new THREE.BoxGeometry(0.05, 0.18, 0.1), woodDark, 3.78, 1.2, 1.72); // ひきて
+  md(new THREE.BoxGeometry(0.14, 0.1, 2.14), woodDark, 3.84, 2.44, 2.5); // かもい
+  md(new THREE.BoxGeometry(0.14, 0.1, 2.14), woodDark, 3.84, 0.06, 2.5); // しきい
+
   // 窓 (夜空や朝の光がにじむ) とポスター
   md(new THREE.BoxGeometry(2.0, 1.4, 0.08), smat(0xbcd4dc, { emissive: 0x36474f }), -0.5, 2.3, -3.94);
   md(new THREE.BoxGeometry(2.1, 0.12, 0.14), wood, -0.5, 1.55, -3.9);
@@ -311,6 +319,7 @@ export function buildUpstairs(scene) {
       { x: CX + 2.6, z: -3.15, hx: 1.05, hz: 0.65 }, // 机
       { x: CX + 2.6, z: -2.5, hx: 0.35, hz: 0.35 },  // いす
       { x: CX + 4.2, z: 0.4, hx: 0.4, hz: 0.85 },    // 本棚
+      { x: CX + 4.2, z: 2.5, hx: 0.5, hz: 1.1 },     // おしいれ
     ],
     spots: {
       stairs: { x: CX - 3.55, z: 1.2 },
@@ -318,6 +327,7 @@ export function buildUpstairs(scene) {
       desk: { x: CX + 2.6, z: -1.7 },
       shelf: { x: CX + 3.5, z: 0.4 },
       window: { x: CX - 0.5, z: -2.9 },
+      closet: { x: CX + 3.3, z: 2.5 },
     },
   };
 }

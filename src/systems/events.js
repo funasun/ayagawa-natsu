@@ -164,6 +164,30 @@ export class EventSystem {
         },
       });
       list.push({
+        x: sp.closet.x, z: sp.closet.z, r: 1.7, label: 'おしいれを あけてみる',
+        action: async () => {
+          if (!s.flags.rodFound) {
+            s.flags.rodFound = true;
+            this.audio.sfx('page');
+            await this.ui.showStory([
+              'ふすまを あけると、ふるい なつの においが した。<br><br>こうりの おくに、しんぶんしに つつまれた<br>ながい ぼうが たてかけて ある。',
+              'そっと ひらいてみる。<br><br>―― つりざおだ。<br>たけの、ふるい つりざお。<br>にぎるところだけ、つやつやに くろずんでいる。',
+              'いっしょに、やぶれた むぎわらぼうしと、<br>しろくろの しゃしんが 1まい。<br><br>いけの まえで、わかい おじさんが ふたり、<br>おっきな さかなを もって わらっている。',
+            ]);
+            this.ui.toast('【はっけん】ふるい つりざおを みつけた。だれのやろ? ばあちゃんに きいてみよう', 'gold');
+            logEvent(s, 'おしいれで ふるいつりざおを みつけた');
+          } else {
+            this.audio.sfx('page');
+            const memos = [
+              'むぎわらぼうしを かぶってみた。ちょっと おっきい',
+              'しゃしんの おじさんたち、ほんまに うれしそうに わろうとる',
+              'じいちゃんの つりざお。にぎると、なんか あんしんする',
+            ];
+            this.ui.toast(memos[(c.day + (s.flags.rodStory ? 1 : 0)) % memos.length]);
+          }
+        },
+      });
+      list.push({
         x: sp.window.x, z: sp.window.z, r: 1.6, label: 'まどから そとを ながめる',
         action: async () => {
           const ph = phaseOf(c.min);
@@ -515,6 +539,16 @@ export class EventSystem {
       : c.day >= 7 && !s.flags.hagaki1 ? 1 : 0;
     if (hagakiNo) {
       list.push({ x: 120.5, z: 18.5, r: 2.0, label: 'ゆうびんうけを のぞく', action: () => this.readHagaki(hagakiNo) });
+    }
+
+    // 学校の学級文集 (こうちょうせんせいに きいてから。ひるまだけ)
+    if (s.flags.bunshuHint && !s.flags.bunshuDone && c.min >= 480 && c.min <= 1020 && c.weather !== 'storm') {
+      list.push({ x: -42.5, z: 58.5, r: 2.5, label: 'ぶんしゅうを 見せてもらう', action: () => this.bunshu() });
+    }
+
+    // 川あそび (あつい はれの日の ひるま。とびいしの ちかくの あさせで)
+    if (c.weather === 'sunny' && c.min >= 600 && c.min < 960 && c.day >= 2 && !s.flags['oyogu' + c.day]) {
+      list.push({ x: 48, z: 11.2, r: 2.8, label: 'かわに はいって あそぶ', action: () => this.kawaAsobi() });
     }
 
     // かわらで みずきり (あかるいうちなら いつでも。じこベストを記録)
@@ -1112,6 +1146,52 @@ export class EventSystem {
     logEvent(s, 'えんがわでぼーっとした');
   }
 
+  // 学級文集: おかあさんの 子どものころの さくぶんを 見せてもらう
+  async bunshu() {
+    const s = this.state;
+    s.flags.bunshuDone = true;
+    this.audio.sfx('page');
+    const pages = [
+      'こうちょうせんせいが、ろうかの たなから<br>ひやけした ぶんしゅうを だしてくれた。<br><br>『あやがわ小 6年1組 学級文集』<br><br>―― おかあさんの、小学生のときのだ。',
+      'もくじから なまえを さがして、ページを ひらく。<br><br>「わたしの なつやすみ」<br><br>『なつやすみは、まいにち 川で およぎました。<br>おとうさんと きょうそうして、いちども かてません。<br>おとうさんは かっぱの うまれかわりだと 思います』',
+      '『おとうさんには 池の ライバルが いて、<br>ふたりで ウナギを ねらっています。<br>つれたら 見せてくれると いっていますが、<br>たぶん いっしょう むりだと 思います』',
+      '『でも、つれない日も おとうさんは たのしそうです。<br>わたしも おとなに なったら、こんな なつやすみを<br>じぶんの こどもに あげたいです』',
+    ];
+    if (s.flags.rodStory) {
+      pages.push('……げんじいの かおが うかんだ。<br><br>しょうぶは、まだ つづいている。<br>おしいれで ねむっていた、あの竿と いっしょに。');
+    }
+    pages.push('さいごの ぎょうに、せんせいの あかペンで<br>「よい なつやすみですね。はなまる」<br><br>おかあさんにも、ぼくと おんなじ<br>なつやすみが あったんだ。');
+    await this.ui.showStory(pages);
+    this.ui.toast('【はっけん】おかあさんの さくぶんを よんだ', 'gold');
+    logEvent(s, 'おかあさんの がっきゅうぶんしゅうを よんだ');
+  }
+
+  // 川あそび: ひざまでの あさせで ばしゃばしゃ (ばあちゃんとの やくそくは まもる)
+  async kawaAsobi() {
+    const s = this.state;
+    s.flags['oyogu' + s.day] = true;
+    this.audio.sfx('splash');
+    this.ui.toast('くつを ぬいで、そーっと かわに はいる。……つめたっ!');
+    await new Promise((r) => setTimeout(r, 1500));
+    await this.ui.fadePulse();
+    s.min = Math.min(s.min + 50, 1255);
+    const pages = [];
+    if (s.flags.bunshuDone) {
+      pages.push('ながれに さからって バシャバシャ あるく。<br>みずを かけあう あいてが いたら、もっと たのしい。<br><br>――おかあさんも、この川で およいだんだ。<br>じいちゃんと きょうそうして、いちども かてなくて。');
+    } else {
+      pages.push('ながれに さからって バシャバシャ あるいて、<br>あしのゆびの あいだの すなの かんしょくに わらう。<br><br>ひざより ふかいとこには いかない。<br>ばあちゃんとの、やくそくだから。');
+    }
+    if (s.day >= 25) {
+      pages.push('ひらたい いしに ねころんで こうらぼしを した。<br><br>みずは まだ なつの つめたさなのに、<br>かわらを わたる かぜは、もう すこしだけ すずしい。');
+    } else {
+      pages.push('さいごは ひらたい いしの うえで こうらぼし。<br><br>いしが ほかほかで、せなかが あったかい。<br>みずの おと。セミの こえ。ながれる くも。<br><br>なつやすみで いちばん ぜいたくな ひるまかもしれない。');
+    }
+    await this.ui.showStory(pages);
+    this.audio.sfx('splash');
+    this.ui.toast('ようけ あそんだ! ……くちびるが ちょっと むらさきに なっとる');
+    logEvent(s, 'かわであそんだ');
+  }
+
   async miharashi() {
     const s = this.state;
     const c = this.clock;
@@ -1269,6 +1349,18 @@ export class EventSystem {
         'ぼうやの ばあちゃんちにも、なつかしい ひとが かえっとるはずじゃ。だいじに してあげんさい。',
       ]);
       logEvent(s, 'おぼんのよるに ひとだまとはなした');
+    } else if (s.flags.rodStory && !s.flags.obakeRod) {
+      // じいちゃんの竿のことを、なぜか しっとる
+      s.flags.obakeRod = true;
+      this.audio.sfx('suzu');
+      await this.ui.say('ひとだま', [
+        '……ぼうや。ええ竿、もっとるのう。',
+        'その竿の ぬしはな、まいばん ここらで、げんじいの ウナギの はなしを して わろうとったんじゃ。',
+        '「あいつ、まーだ 釣れんのか」いうてな。……ほんまは、うれしそうにな。',
+        'しょうぶの つづき、たのんだで。……ひ、ひ、ひ。',
+      ]);
+      this.ui.toast('【ふしぎ】ひとだまは、いけの ほうへ すーっと とんでいった…', 'gold');
+      logEvent(s, 'ひとだまが じいちゃんのさおを しっとった');
     } else {
       const lines = [
         ['こんばんは、ぼうや。……ええ よかぜじゃのう。'],

@@ -207,6 +207,9 @@ function frame(forcedDt) {
   if (started) {
     let guide = null;
     if (state.day === 1 && !state.flags.metBaachan) guide = 'えきまえの おばあちゃんに はなしかけよう';
+    else if (state.flags.rodFound && !state.flags.rodBaachan) guide = 'つりざおの こと、おばあちゃんに きいてみよう';
+    else if (state.flags.rodBaachan && !state.flags.rodStory) guide = 'じいちゃんの つりざおを、ため池の げんじいに 見せにいこう';
+    else if (state.flags.bunshuHint && !state.flags.bunshuDone) guide = 'ひるまに 小学校で ぶんしゅうを 見せてもらおう';
     ui.setGuide(guide);
   }
 

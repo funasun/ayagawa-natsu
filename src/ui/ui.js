@@ -562,12 +562,20 @@ export class UI {
     ];
     // なかよくなった みんなが、駅まで はしってくる
     const farewell = [];
-    if ((s.friend.kenta || 0) >= 6) farewell.push('「おーい!!」<br>ケンタが じてんしゃで つっこんできた。<br>「これ! よこづな つれてけ! 東京で さいきょうに なれ!!」<br>むしかごを おしつけて、はなを すすった。');
+    if ((s.friend.kenta || 0) >= 6) {
+      farewell.push('「おーい!!」<br>ケンタが じてんしゃで つっこんできた。<br>「これ! よこづな つれてけ! 東京で さいきょうに なれ!!」<br>むしかごを おしつけて、はなを すすった。');
+    } else if (s.flags.kentaPapa3) {
+      farewell.push('ケンタが ホームの はしまで ならんで はしってきた。<br>「見おくりは なれとんねん! おれ、なかんぞ!!」<br><br>……うん。しっとる。ぼくも、なかない。');
+    }
     if (s.flags.keyholderGiven) farewell.push('ミナが かばんを もちあげて みせた。<br>ことでんの キーホルダーが ゆれとる。<br>「ちゃんと つけとるけんね。……また来年、ぜったいやで」');
     if (s.flags.unagiTold) farewell.push('かいさつの むこうで、げんじいが つりざおを ふっとる。<br>「あやがわの主ー! 来年は わしが 釣るけんのー!」');
     if (farewell.length) pages.push(...farewell);
     pages.push(
       `「また おいでな」<br><br>ばあちゃんの こえが、セミのこえに まじって きこえた。<br>まどのそとで、あやがわの まちが ながれていく。`,
+    );
+    if (s.flags.rodStory) pages.push('ひざの うえには、しんぶんしに つつんだ<br>じいちゃんの つりざお。<br><br>「来年は その竿と しょうぶじゃ」<br>げんじいの こえが、まだ みみに のこっとる。');
+    if (s.flags.bunshuDone) pages.push('かえったら、おかあさんに はなそう。<br><br>ぶんしゅうの こと。かっぱの こと。<br>おかあさんの なつやすみと、<br>ぼくの なつやすみの こと。');
+    pages.push(
       `<div class="end-stats">
         <div>つかまえた むし …… ${bugCount(s)} しゅるい</div>
         <div>つった さかな …… ${fishCount(s)} しゅるい</div>
