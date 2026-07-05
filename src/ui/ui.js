@@ -350,6 +350,121 @@ export class UI {
   }
 
   // ---------- 絵日記 ----------
+  // ---------- 絵日記の「え」 (その日の いちばんの できごとを クレヨンで) ----------
+  diaryMotif(s) {
+    const has = (k) => s.today.some((t) => t.includes(k));
+    const cal = calDay(s.day);
+    if (cal.event === 'matsuri' || has('はなび') || has('やたい')) return 'hanabi';
+    if ((cal.event === 'hotaru' && (has('ホタル') || has('ボタル'))) || has('ホタル')) return 'hotaru';
+    if (has('ながれぼし') || has('ほしぞら') || has('ゆうひをめにやきつけた')) return 'hoshi';
+    if (has('ウナギ') || has('つり') || has('さかな') || has('ザリガニ')) return 'fishing';
+    if (has('むしずもう') || has('カブト') || has('クワガタ') || has('むしとり') || has('セミ') || has('チョウ') || has('トンボ')) return 'bug';
+    if (has('すいか')) return 'suika';
+    if (has('かわであそんだ') || has('みずきり') || has('およ')) return 'kawa';
+    if (has('こうしえん')) return 'radio';
+    if (has('たいそう')) return 'taiso';
+    if (has('おはかまいり') || has('むかえび') || has('おくりび')) return 'obon';
+    return 'natsu';
+  }
+
+  diaryPicture(motif, day) {
+    const W = 300, H = 190;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const g = cv.getContext('2d');
+    let seed = (day * 131 + motif.length * 37 + 7) % 233280;
+    const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    const w = (n) => (rnd() - 0.5) * n; // てがきの ゆらぎ
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    const line = (pts, color, width) => {
+      g.strokeStyle = color; g.lineWidth = width; g.beginPath();
+      pts.forEach((p, i) => { const x = p[0] + w(1.6), y = p[1] + w(1.6); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+      g.stroke();
+    };
+    const circle = (x, y, r, color) => { g.fillStyle = color; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); };
+    const shape = (pts, color) => { g.fillStyle = color; g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); g.fill(); };
+    const daySky = (a, b) => { const grd = g.createLinearGradient(0, 0, 0, H); grd.addColorStop(0, a || '#8fd0f0'); grd.addColorStop(1, b || '#dff2ec'); g.fillStyle = grd; g.fillRect(0, 0, W, H); };
+    const nightSky = () => { const grd = g.createLinearGradient(0, 0, 0, H); grd.addColorStop(0, '#0f1f40'); grd.addColorStop(1, '#3a2a56'); g.fillStyle = grd; g.fillRect(0, 0, W, H); for (let i = 0; i < 45; i++) circle(rnd() * W, rnd() * H * 0.78, rnd() * 1.2 + 0.3, `rgba(255,255,240,${0.4 + rnd() * 0.6})`); };
+    const sun = (x, y) => { circle(x, y, 15, '#ffd83a'); g.strokeStyle = '#ffcc2a'; g.lineWidth = 3; for (let i = 0; i < 8; i++) { const a = i / 8 * 6.28; g.beginPath(); g.moveTo(x + Math.cos(a) * 19, y + Math.sin(a) * 19); g.lineTo(x + Math.cos(a) * 27, y + Math.sin(a) * 27); g.stroke(); } };
+    const cloud = (x, y) => { g.fillStyle = '#fff'; circle(x, y, 11, '#fff'); circle(x + 13, y + 3, 14, '#fff'); circle(x + 28, y, 11, '#fff'); g.fillRect(x, y, 28, 12); };
+    const ground = (color, y) => { g.fillStyle = color; g.beginPath(); g.moveTo(0, y); for (let x = 0; x <= W; x += 22) g.lineTo(x, y + w(4)); g.lineTo(W, H); g.lineTo(0, H); g.closePath(); g.fill(); };
+
+    if (motif === 'hanabi') {
+      nightSky();
+      ground('#20202e', 158);
+      [130, 168].forEach((x) => { line([[x, 158], [x, 84]], '#7a4a2c', 4); }); // やぐら
+      g.fillStyle = '#d24b3a'; g.fillRect(120, 74, 58, 12);
+      const burst = (x, y, col) => { for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28; line([[x, y], [x + Math.cos(a) * 22, y + Math.sin(a) * 22]], col, 2); circle(x + Math.cos(a) * 24, y + Math.sin(a) * 24, 2, col); } };
+      burst(72, 54, '#ff6b8a'); burst(210, 44, '#ffe066'); burst(150, 96, '#7ad0ff');
+    } else if (motif === 'hotaru') {
+      nightSky();
+      shape([[0, 190], [0, 118], [70, 78], [140, 120], [140, 190]], '#123320');
+      shape([[150, 190], [150, 130], [230, 92], [300, 128], [300, 190]], '#0e2a1a');
+      for (let i = 0; i < 20; i++) { const x = 40 + rnd() * 230, y = 70 + rnd() * 100; circle(x, y, 5.5, 'rgba(180,255,120,0.28)'); circle(x, y, 2.4, 'rgba(210,255,150,0.95)'); }
+    } else if (motif === 'hoshi') {
+      const grd = g.createLinearGradient(0, 0, 0, H); grd.addColorStop(0, '#132b58'); grd.addColorStop(1, '#c96a4a'); g.fillStyle = grd; g.fillRect(0, 0, W, H);
+      for (let i = 0; i < 40; i++) circle(rnd() * W, rnd() * H * 0.6, rnd() * 1.2 + 0.3, 'rgba(255,255,240,0.9)');
+      line([[60, 40], [130, 72]], '#fff', 2); circle(60, 40, 2.5, '#fff'); // ながれ星
+      ground('#2a2434', 150);
+    } else if (motif === 'fishing') {
+      daySky(); sun(44, 34); cloud(200, 30);
+      g.fillStyle = '#4aa6d6'; g.fillRect(0, 116, W, H - 116);
+      ground('#6fae4a', 118);
+      line([[64, 62], [150, 112]], '#8a5a2a', 3); line([[150, 112], [150, 138]], '#eef', 1.4);
+      circle(150, 142, 6, '#e0662f'); // うき
+      shape([[206, 128], [232, 118], [244, 130], [230, 138]], '#cdd9e0'); circle(214, 126, 2, '#333'); // はねる魚
+      line([[150, 116], [150, 108]], '#cdeefb', 2);
+    } else if (motif === 'bug') {
+      daySky(); sun(250, 34); cloud(38, 28); ground('#7ec24f', 132);
+      shape([[62, 132], [70, 58], [86, 58], [82, 132]], '#7a4a22'); // 幹
+      circle(80, 52, 33, '#4e9e3e'); circle(54, 60, 22, '#57ab45'); circle(106, 60, 22, '#57ab45');
+      circle(72, 100, 11, '#241610'); circle(72, 88, 7, '#241610'); line([[72, 84], [72, 72]], '#241610', 3); line([[72, 84], [66, 74]], '#241610', 3); // カブトのつの
+      line([[150, 138], [182, 78]], '#a06a2c', 4); g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 2; g.beginPath(); g.arc(186, 70, 15, 0, 7); g.stroke(); // あみ
+    } else if (motif === 'suika') {
+      daySky(); sun(42, 30); cloud(210, 32); ground('#7ec24f', 138);
+      g.fillStyle = '#e4edf2'; g.fillRect(84, 136, 132, 18); // ござ
+      g.fillStyle = '#2e7d32'; g.beginPath(); g.arc(150, 138, 30, Math.PI, 0); g.fill();
+      g.fillStyle = '#ea4b5a'; g.beginPath(); g.arc(150, 138, 23, Math.PI, 0); g.fill();
+      for (let i = 0; i < 6; i++) circle(128 + i * 9, 128 + w(6), 2, '#241610'); // たね
+    } else if (motif === 'kawa') {
+      daySky(); sun(252, 30); cloud(40, 30);
+      g.fillStyle = '#5bb0da'; g.fillRect(0, 108, W, H - 108);
+      ground('#6fae4a', 110);
+      for (let i = 0; i < 6; i++) circle(28 + i * 46, 132 + w(10), 7, '#9a8f7a'); // 石
+      line([[150, 108], [150, 88]], '#cdeefb', 2); line([[144, 104], [134, 90]], '#cdeefb', 2); line([[156, 104], [166, 90]], '#cdeefb', 2); // しぶき
+    } else if (motif === 'radio') {
+      daySky('#9fd8f2', '#eaf6e6'); ground('#8fbf5a', 150);
+      g.fillStyle = '#b5763b'; g.fillRect(96, 78, 100, 62); g.fillStyle = '#8a5730'; g.fillRect(96, 78, 100, 8);
+      g.fillStyle = '#2e2018'; g.beginPath(); g.arc(130, 112, 17, 0, 7); g.fill();
+      circle(178, 98, 5, '#eee'); circle(178, 124, 5, '#eee');
+      g.strokeStyle = '#fff'; g.lineWidth = 2; [16, 26, 36].forEach((r) => { g.beginPath(); g.arc(200, 96, r, -0.6, 0.6); g.stroke(); });
+      line([[186, 78], [216, 50]], '#777', 2); // アンテナ
+    } else if (motif === 'taiso') {
+      daySky('#bfe6f5', '#f3eecf'); sun(244, 30); ground('#8fbf5a', 142);
+      const px = 146; circle(px, 78, 8, '#f0c090'); line([[px, 86], [px, 116]], '#3a6ea5', 5);
+      line([[px, 94], [px - 18, 70]], '#f0c090', 4); line([[px, 94], [px + 18, 70]], '#f0c090', 4); // ばんざい
+      line([[px, 116], [px - 11, 142]], '#333', 4); line([[px, 116], [px + 11, 142]], '#333', 4);
+      g.fillStyle = '#c46'; g.fillRect(70, 108, 22, 32); circle(81, 100, 7, '#241610'); // ラジオ台
+    } else if (motif === 'obon') {
+      daySky('#a9c6e0', '#e7ddc6'); sun(246, 30); ground('#8aa86a', 142);
+      g.fillStyle = '#9a9a9a'; g.fillRect(132, 88, 30, 56); g.fillStyle = '#7a7a7a'; g.fillRect(122, 140, 50, 8);
+      circle(114, 138, 5, '#e55d6a'); circle(180, 138, 5, '#e55d6a'); // 花
+      line([[147, 88], [152, 60], [143, 40]], 'rgba(210,210,210,0.75)', 3); // けむり
+    } else {
+      daySky(); sun(252, 34); cloud(38, 26); cloud(150, 40); ground('#7ec24f', 138);
+      g.fillStyle = '#ead9b2'; g.fillRect(56, 96, 72, 46);
+      shape([[50, 96], [92, 66], [134, 96]], '#b5563a'); // やね
+      g.fillStyle = '#7a4a2a'; g.fillRect(84, 118, 18, 24); // ドア
+      g.fillStyle = '#bfe3ff'; g.fillRect(110, 104, 14, 14); // まど
+      line([[210, 142], [210, 96]], '#3f8f3f', 4);
+      for (let i = 0; i < 10; i++) { const a = i / 10 * 6.28; circle(210 + Math.cos(a) * 15, 90 + Math.sin(a) * 15, 4.5, '#ffcf3a'); }
+      circle(210, 90, 11, '#f0b400'); circle(210, 90, 6, '#7a4a1a'); // ひまわり
+    }
+    // クレヨンらしい ふちどり
+    g.strokeStyle = 'rgba(60,50,34,0.35)'; g.lineWidth = 3; g.strokeRect(2, 2, W - 4, H - 4);
+    return cv.toDataURL('image/png');
+  }
+
   diaryText(clock) {
     const s = this.state;
     const cal = calDay(s.day);
@@ -432,10 +547,13 @@ export class UI {
       const { header, text } = this.diaryText(clock);
       // 日記帳に保存 (2階の机で読み返せる)
       const s = this.state;
-      if (!s.diary.some((d) => d.day === s.day)) s.diary.push({ day: s.day, header, text });
+      const motif = this.diaryMotif(s);
+      if (!s.diary.some((d) => d.day === s.day)) s.diary.push({ day: s.day, header, text, motif });
+      const pic = this.diaryPicture(motif, s.day);
       this.els.diary.innerHTML = `
         <div class="diary-page">
           <div class="diary-head">${header}</div>
+          <img class="diary-pic" src="${pic}" alt="えにっき">
           <div class="diary-body">${text}</div>
           <div class="diary-next">— ${this.isTouch ? 'タッチ' : 'E'} で つぎのひへ —</div>
         </div>`;
@@ -469,9 +587,11 @@ export class UI {
       };
       const render = () => {
         const d = s.diary[i];
+        const pic = this.diaryPicture(d.motif || 'natsu', d.day);
         this.els.diary.innerHTML = `
           <div class="diary-page">
             <div class="diary-head">${d.header}</div>
+            <img class="diary-pic" src="${pic}" alt="えにっき">
             <div class="diary-body">${d.text}</div>
             <div style="display:flex;gap:10px;justify-content:center;align-items:center;margin-top:16px;flex-wrap:wrap">
               <button class="choice-btn" data-n="-1" style="${i === 0 ? 'opacity:.35' : ''}">← まえのひ</button>
