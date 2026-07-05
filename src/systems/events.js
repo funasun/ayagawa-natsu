@@ -426,6 +426,51 @@ export class EventSystem {
       }
     }
 
+    // 学校の夏まつりの屋台 (8/9 夕方から、小学校の校庭で)
+    if (c.event === 'gakusai' && c.min >= 1020) {
+      if (!s.flags.gakusaiYoyo) {
+        list.push({
+          x: -47, z: 63.2, r: 2, label: 'ヨーヨーつりを する',
+          action: async () => {
+            s.flags.gakusaiYoyo = true;
+            const got = Math.random() < 0.65;
+            this.audio.sfx(got ? 'catch' : 'splash');
+            this.ui.toast(got
+              ? 'こよりが きれるまえに…… とれた! みずいろの ヨーヨーや!'
+              : 'こよりが プツン。……ざんねん! でも おまけで 1こ もろた', got ? 'gold' : null);
+            logEvent(s, got ? 'がっこうまつりでヨーヨーをつった' : 'ヨーヨーつりはおまけをもろた');
+          },
+        });
+      }
+      if (!s.flags.gakusaiKori) {
+        list.push({
+          x: -42, z: 64.2, r: 2, label: 'かきごおりを たべる',
+          action: async () => {
+            s.flags.gakusaiKori = true;
+            const i = await this.ui.choice('なにあじに する?', ['いちご', 'メロン', 'ブルーハワイ']);
+            const name = ['いちご', 'メロン', 'ブルーハワイ'][i];
+            this.audio.sfx('slurp');
+            this.ui.toast(`${name}の かきごおり! いそいで たべたら あたまが キーン!!`, 'gold');
+            logEvent(s, `がっこうまつりで${name}のかきごおりをたべた`);
+          },
+        });
+      }
+      if (!s.flags.gakusaiKuji) {
+        list.push({
+          x: -37, z: 63.2, r: 2, label: 'くじびきを する',
+          action: async () => {
+            s.flags.gakusaiKuji = true;
+            const atari = Math.random() < 0.3;
+            this.audio.sfx(atari ? 'boom' : 'coin');
+            this.ui.toast(atari
+              ? '【あたり!!】カランカラン! けいひんは ちょうデカい うちわ!'
+              : 'はずれ…… ざんねんしょうの あめだま 3こ。まあ ええか', atari ? 'gold' : null);
+            logEvent(s, atari ? 'がっこうまつりのくじであたりをひいた' : 'がっこうまつりでくじびきをした');
+          },
+        });
+      }
+    }
+
     // ことでんに乗って高松・瓦町へ (7:00-15:00 に陶駅から)
     if (c.min >= 420 && c.min <= 900) {
       list.push({
@@ -480,6 +525,18 @@ export class EventSystem {
     // すいかわり (はれた日のひる、ケンタたちと。1日1回)
     if (c.weather === 'sunny' && c.phase === 'day' && c.day >= 2 && c.day !== 31 && !s.flags['suika' + c.day]) {
       list.push({ x: 7, z: 12, r: 2.4, label: 'すいかわりを する (ケンタとミナと)', action: () => this.suikawari() });
+    }
+
+    // 綾上の棚田の農作業 (あさ・ひる、1日1回。ノボルさんの手つだい)
+    if ((c.phase === 'morning' || c.phase === 'day') && c.weather !== 'rain' && c.weather !== 'storm'
+        && c.day >= 2 && c.day !== 31 && !s.flags['nou' + c.day]) {
+      list.push({ x: -135, z: -52.5, r: 2.6, label: 'たなだの のさぎょうを てつだう', action: () => this.tanadaWork() });
+    }
+
+    // ばあちゃんの畑のみずやり (あさ か ゆうがた、1日1回)
+    if ((c.min < 600 || (c.min >= 960 && c.min < 1140)) && c.weather !== 'rain' && c.weather !== 'storm'
+        && !s.flags['mizuyari' + c.day]) {
+      list.push({ x: 108.5, z: 16, r: 2.3, label: 'はたけに みずやりを する', action: () => this.mizuyari() });
     }
 
     // かくれんぼ (あさ・ひる、雨でなければ。はじめたらその日のうちに見つけること)
@@ -550,7 +607,7 @@ export class EventSystem {
         msg: 'つちのなかに とうきの かけらが! むかし ここで やきものを やいとったんや', log: 'とうびんやまのかまあとをしらべた' },
       { id: 'keikoku', x: -205, z: -32, label: 'たにがわを のぞく', sfx: 'splash',
         msg: 'みずが つめたい! やまの みずは ぜんぜん ちがうなあ', log: 'あやかみのたにがわであそんだ' },
-      { id: 'tanada', x: -135.5, z: -64, label: 'たなだを ながめる', sfx: 'catch',
+      { id: 'tanada', x: -135, z: -54, label: 'たなだを ながめる', sfx: 'catch',
         msg: 'やまの しゃめんに たんぼが だんだんに ならんどる! みずかがみが ぴかぴかや', log: 'あやかみのたなだをみにいった' },
     ];
     for (const sec of secrets) {
@@ -781,6 +838,90 @@ export class EventSystem {
     }
     this.audio.sfx('slurp');
     this.ui.toast('3にんで かわらに すわって すいかを たべた。たねを どこまで とばせるか きょうそうした');
+  }
+
+  // ---- 綾上の棚田の農作業 (ノボルさんの手つだい。つづけると ええことがある) ----
+  async tanadaWork() {
+    const s = this.state;
+    const c = this.clock;
+    s.flags['nou' + c.day] = true;
+    if (!s.nouka) {
+      await this.ui.say('ノボルさん', [
+        'ん? まちの子か。こんな やまおくまで ようきたのう。',
+        'わしは ノボル。この たなだを じいさんの代から まもっとるんじゃ。',
+        'なんな、てつどうてくれるんか? ほな たのむわ。のうかは ねこのてでも かりたいんじゃ!',
+      ]);
+    }
+    const i = await this.ui.choice('なにを てつだう?', ['あぜの くさぬき', 'みずの みまわり', 'かかしの なおし']);
+    await this.ui.fadePulse();
+    this.audio.sfx('taiso');
+    if (i === 0) {
+      this.ui.toast('あぜの くさを ずんずん ぬいた。てのひらが くさの においに なった');
+      if (Math.random() < 0.4) {
+        this.audio.sfx('flee');
+        this.ui.toast('くさむらから バッタが とびだして びっくりした!');
+      }
+    } else if (i === 1) {
+      this.audio.sfx('splash');
+      this.ui.toast('みなくちを あけて、たんぼに みずを いれた。ひざしで ぬるんだ みずが きもちええ');
+    } else {
+      this.ui.toast('かかしの ぼうしを かぶせなおして、むきを ととのえた。……なんか えらそうな かおに なった');
+    }
+    s.min = Math.min(s.min + 50, 1280); // のさぎょうは 時間がかかる
+    s.nouka = (s.nouka || 0) + 1;
+    s.friend.noboru = (s.friend.noboru || 0) + 1;
+    if (s.nouka === 3) {
+      this.audio.sfx('catch');
+      await this.ui.say('ノボルさん', [
+        'もう 3かいめか。ぼん、みどころ あるわ。',
+        'ほれ、うちの もぎたての トマトじゃ。まるかじりが いちばん うまいんぞ。',
+      ]);
+      this.ui.toast('とれたての トマトを もろた! あまくて、ちょっと あおくさい なつの あじや', 'gold');
+      logEvent(s, 'ノボルさんにトマトをもろた');
+    } else if (s.nouka === 7) {
+      this.audio.sfx('catch');
+      await this.ui.say('ノボルさん', [
+        'ぼんは もう いっちょまえの のうかじゃ。',
+        'この たなだの こめはな、やまの みずだけで そだつんじゃ。',
+        'あきに とれた しんまい、ばあちゃんとこへ とどけちゃるけん。たのしみに しとりまい。',
+      ]);
+      this.ui.toast('【やくそく】あきに ノボルさんの しんまいが とどくことになった!', 'gold');
+      logEvent(s, 'ノボルさんとしんまいのやくそくをした');
+    } else {
+      const okini = [
+        'おおきに、たすかったわ。ぼんは ええ てつだいじゃ。',
+        'きょうも あついのう。むぎちゃ のんで いきまい。',
+        'たなだの みずかがみはな、ゆうがたが いちばん きれいなんじゃ。',
+        'いねの はなはな、あさの すずしいうちに さくんぞ。しっとったか?',
+      ];
+      await this.ui.say('ノボルさん', [okini[c.day % okini.length]]);
+    }
+    logEvent(s, 'たなだののさぎょうをてつだった');
+  }
+
+  // ---- ばあちゃんの畑のみずやり (きゅうりとトマト。つづけると そだつ) ----
+  async mizuyari() {
+    const s = this.state;
+    const c = this.clock;
+    s.flags['mizuyari' + c.day] = true;
+    await this.ui.fadePulse();
+    this.audio.sfx('splash');
+    s.mizuyariN = (s.mizuyariN || 0) + 1;
+    s.min = Math.min(s.min + 20, 1280);
+    this.ui.toast('じょうろで たっぷり みずやり。かわいた つちの においが ふわっと たった');
+    if (s.mizuyariN >= 5 && !s.flags.kyuriMogi) {
+      s.flags.kyuriMogi = true;
+      this.audio.sfx('catch');
+      this.ui.toast('【おおきくなった!】そだてた きゅうりを 1ぽん もいで、まるかじりした! みずみずしい!', 'gold');
+      s.friend.baachan = (s.friend.baachan || 0) + 1;
+      logEvent(s, 'そだてたきゅうりをまるかじりした');
+    } else if (s.mizuyariN === 1) {
+      this.ui.toast('ばあちゃんの こえ「まいにち みずを やるとな、やさいは こたえてくれるんよ」');
+    } else if (Math.random() < 0.3) {
+      this.audio.sfx('suzu');
+      this.ui.toast('トマトの みが すこし あこうなっとる。もうちょっとや');
+    }
+    logEvent(s, 'ばあちゃんのはたけにみずやりをした');
   }
 
   // ---- かくれんぼ (ふたりが まちのどこかに かくれる。ヒントをたよりに さがす) ----
@@ -1074,6 +1215,7 @@ export class EventSystem {
       : 'ことでんに のって すえまで かえる? (やく30ぷん)';
     const yes = await this.ui.choice(q, ['のる', 'やめとく']);
     if (yes !== 0) return;
+    this.state.flags.rideTrain = true; // えきちょうさんが おぼえてくれとる
     this.audio.sfx('train');
     const tr = this.world.trainRide;
     await this.warpTo(tr, tr.entry.x, tr.entry.z, Math.PI, 500);
@@ -1158,11 +1300,15 @@ export class EventSystem {
         }
       }
     }
-    // まつり飾りの表示制御
+    // まつり飾りの表示制御 (8/25 滝宮天満宮 / 8/9 小学校の夏まつり)
     const isMatsuri = this.clock.event === 'matsuri';
+    const isGakusai = this.clock.event === 'gakusai';
     this.world.festivalGroup.visible = isMatsuri;
-    this.festivalOn = isMatsuri;
-    if (isMatsuri) {
+    if (this.world.gakusaiGroup) this.world.gakusaiGroup.visible = isGakusai;
+    this.world.activeFestivalRects = isMatsuri ? this.world.festivalRects
+      : isGakusai ? this.world.gakusaiRects : null;
+    this.festivalOn = isMatsuri || isGakusai;
+    if (this.festivalOn) {
       const glow = this.clock.min >= 1020 ? 1.2 : 0;
       for (const m of this.world.lanternMats) m.emissiveIntensity = glow;
     }

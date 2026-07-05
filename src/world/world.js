@@ -4,7 +4,7 @@ import {
   makeStoneLantern, makeBridge, makeSunflower, makePole, makeStoneWall, makeVending, makePostbox,
   makeBusStop, makeYatai, makeChochin, makeTrain, makeStation, makeRiceRow, makeFence,
   makeBench, makeMonument, makeAppleTree, makeKamaato,
-  makeSignBoard, makeMall, makeTownHall, makeCar,
+  makeSignBoard, makeMall, makeTownHall, makeCar, makeSchool, makeHatake,
   makeMichishirube, makeHideout, makeGrave, makeLookout,
 } from './builders.js';
 import { buildInterior, buildUpstairs } from './interior.js';
@@ -19,6 +19,8 @@ export const riverCenterZ = (x) =>
 export const RIVER_HALF = 6;
 export const POND = { x: 130, z: 78, r: 15 }; // 北条池 (陶)
 export const BRIDGE_X = 20;
+export const BRIDGE2_X = -20.8; // 滝宮駅まえの橋 (駅前の道が川をわたるところ)
+export const BRIDGE3_X = -137.5; // 綾上の棚田への山道が川をわたる木橋
 export const TOBIISHI_X = 48; // 飛び石のならぶ場所
 export const TOBIN = { x: 168, z: 52, h: 9.5, r: 24 }; // 十瓶山 (陶の窯跡の山)
 
@@ -68,10 +70,13 @@ const roadDefs = [
   { pts: [[20, -6], [14, -28], [5, -44], [1, -52], [0, -58]], w: 2.6 },
   // 旧金毘羅街道 (北へ)
   { pts: [[-70, 24], [-70, 60], [-62, 80]], w: 2.6 },
+  // 旧金毘羅街道から あやがわ小学校へ
+  { pts: [[-70, 60], [-52, 60]], w: 2.2 },
   // ミナんちのまえ
   { pts: [[32, 24], [32, 19]], w: 2.2 },
-  // 滝宮駅まえ
-  { pts: [[-20, 24], [-21, -22]], w: 2.6 },
+  // 滝宮駅まえ (川は橋でわたる: 北岸→橋→南岸で駅へ)
+  { pts: [[-20, 24], [-20.6, -5.5]], w: 2.6 },
+  { pts: [[-20.9, -22.3], [-21.1, -23.2]], w: 2.6 },
   // 陶: 家のまえ (北条池への道から分かれて玄関さきへ)・陶駅まえ・北条池への道・十瓶山のふもと
   { pts: [[127.5, 13], [120.5, 15.3]], w: 2 },
   { pts: [[108, 3.8], [109, -8]], w: 2.4 },
@@ -79,7 +84,9 @@ const roadDefs = [
   { pts: [[129, 44], [144, 44], [156, 43]], w: 2.2 },
   // 綾上: 果樹園への小道・棚田への山道
   { pts: [[-180, -24], [-184, -8]], w: 2.4 },
-  { pts: [[-140, -16], [-137, -40], [-135, -56]], w: 1.8 },
+  // (川は x≈-137.5 の木橋でわたる)
+  { pts: [[-140, -16], [-138.5, -20]], w: 1.8 },
+  { pts: [[-136.4, -38], [-135.5, -44]], w: 1.8 },
   // 十瓶山: 見晴らし台への山道
   { pts: [[156, 43], [157, 50], [157, 57]], w: 2 },
   // 陶: 山すその墓地への小道
@@ -195,6 +202,15 @@ export function buildWorld(scene) {
       if (Math.abs(x - BRIDGE_X) < 2.3 && bz < 8.2) {
         const t = Math.min(1, (8.2 - bz) / 1.2);
         return Math.max(groundY(x, z), 0.49 * t);
+      }
+      if (Math.abs(x - BRIDGE2_X) < 2.3 && bz < 8.2) {
+        const t = Math.min(1, (8.2 - bz) / 1.2);
+        return Math.max(groundY(x, z), 0.49 * t);
+      }
+      if (Math.abs(x - BRIDGE3_X) < 2.3 && bz < 8.2) {
+        const t = Math.min(1, (8.2 - bz) / 1.2);
+        const base = baseElev(BRIDGE3_X, riverCenterZ(BRIDGE3_X) - 9);
+        return Math.max(groundY(x, z), (base + 0.49) * t + groundY(x, z) * (1 - t));
       }
       // 飛び石 (x=48) の上を ぴょんぴょん わたる
       if (Math.abs(x - TOBIISHI_X) < 1.4 && bz < RIVER_HALF + 2.4) {
@@ -319,6 +335,14 @@ export function buildWorld(scene) {
   const bridge = makeBridge();
   bridge.position.set(BRIDGE_X, 0, riverCenterZ(BRIDGE_X));
   scene.add(bridge);
+  // 滝宮駅まえの橋 (駅前の道 [-20,24]→[-21,-22] が川をわたる場所)
+  const bridge2 = makeBridge();
+  bridge2.position.set(BRIDGE2_X, 0, riverCenterZ(BRIDGE2_X));
+  scene.add(bridge2);
+  // 綾上の木橋 (棚田への山道が川をわたる場所。土地が高いぶん橋も高い)
+  const bridge3 = makeBridge();
+  bridge3.position.set(BRIDGE3_X, baseElev(BRIDGE3_X, riverCenterZ(BRIDGE3_X) - 9), riverCenterZ(BRIDGE3_X));
+  scene.add(bridge3);
 
   // ---------- ことでんの線路 (路盤 + レール + まくらぎ + 鉄橋) ----------
   const railDense = densify(RAIL_PTS, 3);
@@ -413,6 +437,11 @@ export function buildWorld(scene) {
   scene.add(kaki);
   world.trees.push({ x: 124, z: 13, big: false });
   addCircle(124, 13, 0.6);
+  // ばあちゃんの野菜畑 (きゅうりとトマト。あさかゆうがたに みずやりできる)
+  const hatake = makeHatake();
+  hatake.position.set(108.5, gy(108.5, 13), 13);
+  scene.add(hatake);
+  addRect(108.5, 13, 2.3, 1.8);
 
   // 陶の集落 (瓦屋根の家いえ)
   for (const [hx, hz, hw, hd, hr, ds] of [
@@ -484,7 +513,8 @@ export function buildWorld(scene) {
 
   // ---------- 綾上の棚田 (山の斜面に石垣の段々。まんなかに あぜ道) ----------
   const tanadaDefs = [];
-  for (const tx of [-149, -142, -128, -121]) for (const tz of [-63, -73]) tanadaDefs.push([tx, tz]);
+  // 線路 (z≈-66〜-74) の北側の斜面にならぶ
+  for (const tx of [-149, -142, -128, -121]) for (const tz of [-49, -59]) tanadaDefs.push([tx, tz]);
   const riceTana = makeRiceRow(tanadaDefs.length * 8 * 7);
   let tanaI = 0;
   for (const [px, pz] of tanadaDefs) {
@@ -508,6 +538,7 @@ export function buildWorld(scene) {
       dummy.updateMatrix();
       riceTana.setMatrixAt(tanaI++, dummy.matrix);
     }
+    addRect(px, pz, 3.5, 4.6); // 田んぼには入れない (あぜ道を歩く)
   }
   scene.add(riceTana);
   // 農具ごや
@@ -519,9 +550,9 @@ export function buildWorld(scene) {
   kRoof.position.y = 2.7;
   kRoof.rotation.y = Math.PI / 4;
   koya.add(kBody, kRoof);
-  koya.position.set(-129.5, gy(-129.5, -56.5), -56.5);
+  koya.position.set(-130, gy(-130, -41.5), -41.5);
   scene.add(koya);
-  addCircle(-129.5, -56.5, 1.7);
+  addCircle(-130, -41.5, 1.7);
   // かかし (あぜ道のまんなかで 田をみまもる)
   const kakashi = new THREE.Group();
   const kkPole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 2.1, 5), smat(0x8a6a42));
@@ -536,10 +567,10 @@ export function buildWorld(scene) {
   kkHat.position.y = 2.05;
   kakashi.add(kkPole, kkArm, kkShirt, kkHead, kkHat);
   kakashi.traverse((o) => { o.castShadow = true; });
-  kakashi.position.set(-135.5, gy(-135.5, -69), -69);
+  kakashi.position.set(-135, gy(-135, -49), -49);
   kakashi.rotation.y = 0.4;
   scene.add(kakashi);
-  addCircle(-135.5, -69, 0.4);
+  addCircle(-135, -49, 0.4);
 
   // ---------- ミナんち (もとのおばあちゃんの家。ひまわり畑つき) ----------
   const minaHouse = makeHouse({ w: 9, d: 6.5, h: 3.1, roofC: '#5a4438' });
@@ -801,7 +832,7 @@ export function buildWorld(scene) {
     if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 6) continue;
     if (roadDist(x, z) < 2.4) continue;
     if (railDist(x, z) < 3.5) continue;
-    if (x > -152 && x < -118 && z > -84 && z < -50) continue; // 綾上の棚田
+    if (x > -152 && x < -118 && z > -68 && z < -38) continue; // 綾上の棚田
     const t = tguard % 3 === 0 ? makePine(tguard) : makeTree(false, tguard);
     t.scale.setScalar(0.95 + hash(tguard, 33) * 0.7);
     t.position.set(x, gy(x, z), z);
@@ -826,7 +857,8 @@ export function buildWorld(scene) {
     if (x > 4 && x < 60 && z > 43 && z < 79) continue; // 滝宮の田
     if (x > 82 && x < 124 && z > 17 && z < 53) continue; // 陶の田
     if (x > 45 && x < 87 && z > -55 && z < -24) continue; // モールと駐車場
-    if (x > -152 && x < -118 && z > -84 && z < -50) continue; // 綾上の棚田
+    if (x > -152 && x < -118 && z > -68 && z < -38) continue; // 綾上の棚田
+    if (x > -55 && x < -30 && z > 47 && z < 68) continue; // 小学校の校庭
     let hit = false;
     for (const r of world.rects) if (Math.abs(x - r.x) < r.hx + 1 && Math.abs(z - r.z) < r.hz + 1) { hit = true; break; }
     if (hit) continue;
@@ -859,6 +891,7 @@ export function buildWorld(scene) {
     if (x > 4 && x < 60 && z > 43 && z < 79) continue;
     if (x > 82 && x < 124 && z > 17 && z < 53) continue;
     if (x > 45 && x < 87 && z > -55 && z < -24) continue;
+    if (x > -55 && x < -30 && z > 47 && z < 68) continue; // 小学校の校庭
     let fhit = false;
     for (const r of world.rects) if (Math.abs(x - r.x) < r.hx + 1 && Math.abs(z - r.z) < r.hz + 1) { fhit = true; break; }
     if (fhit) continue;
@@ -974,6 +1007,80 @@ export function buildWorld(scene) {
   scene.add(festival);
   world.festivalGroup = festival;
 
+  // ---------- あやがわ小学校 (旧金毘羅街道のさき。8/9 は校庭で夏まつり) ----------
+  // カメラは -z を向くので、校しゃは校庭の北 (z小) に置き、正面を +z に向ける
+  const school = makeSchool();
+  school.position.set(-42, gy(-42, 52), 52);
+  scene.add(school);
+  addRect(-42, 52, 8.9, 3.0);
+  registerOccluder(school, -42, 52, 9.5, gy(-42, 52) + 6.5);
+  // 校庭 (踏みかためた土のグラウンド)
+  scene.add(strip(densify([[-51, 60], [-33.5, 60]], 3), 13, 0.04, 0xcbb287));
+  // 鉄棒
+  const tetsubo = new THREE.Group();
+  for (const tx of [-1.1, 1.1]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.15, 6), smat(0x3a6ea5));
+    post.position.set(tx, 0.55, 0);
+    tetsubo.add(post);
+  }
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.3, 6), smat(0xc8ccd0));
+  bar.rotation.z = Math.PI / 2;
+  bar.position.y = 1.1;
+  tetsubo.add(bar);
+  tetsubo.position.set(-35.5, gy(-35.5, 64.5), 64.5);
+  scene.add(tetsubo);
+  addRect(-35.5, 64.5, 1.3, 0.2);
+  // 百葉箱
+  const hyakuyo = new THREE.Group();
+  const hyBox = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), smat(0xf2f2ee));
+  hyBox.position.y = 1.0;
+  hyBox.castShadow = true;
+  hyakuyo.add(hyBox);
+  for (const [lx, lz] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.7, 5), smat(0xf2f2ee));
+    leg.position.set(lx, 0.35, lz);
+    hyakuyo.add(leg);
+  }
+  hyakuyo.position.set(-49.5, gy(-49.5, 56.5), 56.5);
+  scene.add(hyakuyo);
+  addCircle(-49.5, 56.5, 0.6);
+  // 校門 (道のつきあたり)
+  for (const gz of [58.2, 61.8]) {
+    const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.7, 0.6), smat(0x9a948a));
+    pillar.position.set(-51.3, gy(-51.3, gz) + 0.85, gz);
+    pillar.castShadow = true;
+    scene.add(pillar);
+    addCircle(-51.3, gz, 0.5);
+  }
+  // 校庭のサクラの木 (2がっきには 葉ざくら)
+  for (const [px, pz] of [[-31, 54], [-53.5, 63.5]]) {
+    const t = makeTree(false, px + pz);
+    t.position.set(px, gy(px, pz), pz);
+    scene.add(t);
+    world.trees.push({ x: px, z: pz, big: false });
+    addCircle(px, pz, 0.6);
+  }
+
+  // ---------- 学校の夏まつりの飾り (8/9 だけ校庭にあらわれる) ----------
+  const gakusai = new THREE.Group();
+  world.gakusaiRects = [];
+  [[-47, 61.5], [-42, 62.5], [-37, 61.5]].forEach(([x, z], i) => {
+    const y = makeYatai(yataiColors[(i + 1) % 3]);
+    y.position.set(x, gy(x, z), z);
+    gakusai.add(y);
+    world.gakusaiRects.push({ x, z, hx: 1.5, hz: 0.9 });
+  });
+  for (let i = 0; i < 8; i++) {
+    const cx = -49 + i * 2;
+    const c3 = makeChochin();
+    c3.position.set(cx, gy(cx, 58.5) + 3 + Math.sin(i * 1.7) * 0.15, 58.5);
+    gakusai.add(c3);
+    c3.traverse((o) => { if (o.userData && o.userData.lantern) world.lanternMats.push(o.material); });
+  }
+  gakusai.visible = false;
+  scene.add(gakusai);
+  world.gakusaiGroup = gakusai;
+
   // ---------- 道しるべ (まよわないための子ども看板) ----------
   for (const [sx, sz, rot, entries] of [
     // 橋の北詰: 西へ滝宮 / 東へ陶
@@ -988,6 +1095,8 @@ export function buildWorld(scene) {
     [131.5, 41.5, 0.2, [{ text: 'とかめやま', side: 1 }]],
     // 綾上への道: とおいよ
     [-92, 13, 0.5, [{ text: 'あやかみ (とおい)', side: -1 }]],
+    // 旧金毘羅街道の分かれ道: 小学校へ
+    [-68, 56.5, 0.3, [{ text: 'しょうがっこう', side: 1 }]],
   ]) {
     const sign = makeMichishirube(entries);
     sign.position.set(sx, gy(sx, sz), sz);
@@ -1122,13 +1231,13 @@ export function buildWorld(scene) {
     if (Math.abs(x) > 232 || Math.abs(z) > 148) return true;
     const rc = riverCenterZ(x);
     const dR = Math.abs(z - rc);
-    if (dR < RIVER_HALF + 0.5 && !(x > BRIDGE_X - 2.4 && x < BRIDGE_X + 2.4) && !(x > TOBIISHI_X - 1.2 && x < TOBIISHI_X + 1.2)) return true;
+    if (dR < RIVER_HALF + 0.5 && !(x > BRIDGE_X - 2.4 && x < BRIDGE_X + 2.4) && !(x > BRIDGE2_X - 2.4 && x < BRIDGE2_X + 2.4) && !(x > BRIDGE3_X - 2.4 && x < BRIDGE3_X + 2.4) && !(x > TOBIISHI_X - 1.2 && x < TOBIISHI_X + 1.2)) return true;
     if (dR < 13 && railDist(x, z) < 1.6) return true; // 川ちかくの線路の盛り土
     if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 0.5) return true;
     for (const cc of world.circles) if (Math.hypot(x - cc.x, z - cc.z) < cc.r + 0.45) return true;
     for (const r of world.rects) if (Math.abs(x - r.x) < r.hx + 0.4 && Math.abs(z - r.z) < r.hz + 0.4) return true;
-    if (festivalOn && world.festivalRects) {
-      for (const r of world.festivalRects) if (Math.abs(x - r.x) < r.hx + 0.4 && Math.abs(z - r.z) < r.hz + 0.4) return true;
+    if (festivalOn && world.activeFestivalRects) {
+      for (const r of world.activeFestivalRects) if (Math.abs(x - r.x) < r.hx + 0.4 && Math.abs(z - r.z) < r.hz + 0.4) return true;
     }
     return false;
   };
@@ -1161,7 +1270,7 @@ export function buildWorld(scene) {
     const rc = riverCenterZ(x);
     const dRiver = Math.abs(z - rc);
     if (dRiver >= RIVER_HALF + 0.4 && dRiver < RIVER_HALF + 4.5 && Math.abs(x) < 230) {
-      if (!(x > BRIDGE_X - 3 && x < BRIDGE_X + 3)) return { zone: 'river', spot: new THREE.Vector3(x, waterLevel(x) + 0.06, rc) };
+      if (!(x > BRIDGE_X - 3 && x < BRIDGE_X + 3) && !(x > BRIDGE2_X - 3 && x < BRIDGE2_X + 3) && !(x > BRIDGE3_X - 3 && x < BRIDGE3_X + 3)) return { zone: 'river', spot: new THREE.Vector3(x, waterLevel(x) + 0.06, rc) };
     }
     const dPond = Math.hypot(x - POND.x, z - POND.z);
     if (dPond >= POND.r + 0.4 && dPond < POND.r + 4) {

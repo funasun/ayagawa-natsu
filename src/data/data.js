@@ -43,7 +43,7 @@ export const CALENDAR = [
   { weather: 'sunny', event: 'hotaru', note: 'ホタルはこよいまで…' },
   { weather: 'sunny' },
   { weather: 'cloudy' },
-  { weather: 'sunny' },
+  { weather: 'sunny', event: 'gakusai', note: 'しょうがっこうの なつまつり' },
   { weather: 'rain' },
   { weather: 'sunny' },
   { weather: 'cloudy' },

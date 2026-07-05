@@ -205,7 +205,7 @@ function frame(forcedDt) {
     audio.setScene({
       phase: phaseOf(state.min),
       weather: gameClock.weather, // 夕立ちゅうは 'rain' になる
-      festivalNight: calDay(state.day).event === 'matsuri' && state.min >= 1020,
+      festivalNight: ['matsuri', 'gakusai'].includes(calDay(state.day).event) && state.min >= 1020,
       lateSummer: state.day >= 18, // 後半はセミの主役が交代して、おわりの気配がする
     });
   }

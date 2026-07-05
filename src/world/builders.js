@@ -494,7 +494,8 @@ export function makeTrain() {
 
 export function makeStation() {
   const g = new THREE.Group();
-  g.add(m(new THREE.BoxGeometry(16, 0.9, 3.4), mat(0xb2ab9e), 0, 0.45, 0));
+  // ホームは土台を深くのばして、斜面のうえでも浮いて見えないように
+  g.add(m(new THREE.BoxGeometry(16, 2.4, 3.4), mat(0xb2ab9e), 0, 0.9 - 1.2, 0));
   g.add(m(new THREE.BoxGeometry(16, 0.06, 0.3), smat(0xe8d84a), 0, 0.93, 1.4));
   const hut = makeHouse({ w: 6, d: 3.4, h: 2.6, roofC: '#6b4438', engawa: false });
   hut.position.set(0, 0.9, 0.2);
@@ -568,6 +569,53 @@ export function makeTownHall() {
   const sign = makeSignBoard('あやがわちょう やくば', { bg: '#f4f4f0', fg: '#445544', w: 8, h: 1.3 });
   sign.position.set(0, H - 0.9, D / 2 + 0.1);
   g.add(sign);
+  return g;
+}
+
+export function makeSchool() {
+  // あやがわ小学校 (木造モルタルの2階建て。屋上に時計)
+  const g = new THREE.Group();
+  const W = 17, H = 5.6, D = 5.2;
+  const body = m(new THREE.BoxGeometry(W, H, D), smat(0xf0e9d6), 0, H / 2, 0);
+  body.castShadow = true; body.receiveShadow = true;
+  g.add(body);
+  g.add(m(new THREE.BoxGeometry(W + 0.5, 0.5, D + 0.5), smat(0xb0aa98), 0, H + 0.25, 0));
+  // 2階建ての窓グリッド (+z 正面)
+  for (const wy of [1.9, 4.2]) {
+    for (let i = -3; i <= 3; i++) {
+      if (wy < 3 && i === 0) continue; // 1階中央は昇降口
+      g.add(m(new THREE.BoxGeometry(1.5, 1.2, 0.12), smat(0x9cc0d0), i * 2.3, wy, D / 2 + 0.05));
+    }
+  }
+  g.add(m(new THREE.BoxGeometry(2.4, 2.5, 0.16), smat(0x6a8595), 0, 1.25, D / 2 + 0.06)); // 昇降口
+  g.add(m(new THREE.BoxGeometry(3.4, 0.28, 1.6), smat(0xd8d2c0), 0, 2.7, D / 2 + 0.7)); // 庇
+  // 屋上の時計塔
+  g.add(m(new THREE.BoxGeometry(1.6, 1.5, 0.6), smat(0xe8e2d0), 0, H + 1.0, 0));
+  const face = m(new THREE.CylinderGeometry(0.55, 0.55, 0.08, 16), smat(0xfafaf4), 0, H + 1.05, 0.32);
+  face.rotation.x = Math.PI / 2;
+  g.add(face);
+  const sign = makeSignBoard('あやがわ しょうがっこう', { bg: '#f4f2ea', fg: '#3f4a55', w: 8, h: 1.1 });
+  sign.position.set(0, H - 0.85, D / 2 + 0.1);
+  g.add(sign);
+  return g;
+}
+
+export function makeHatake() {
+  // ばあちゃんの野菜畑 (うね3本。トマトときゅうりの支柱)
+  const g = new THREE.Group();
+  g.add(m(new THREE.BoxGeometry(4.4, 0.24, 3.4), smat(0x7a5a3e), 0, 0.12, 0)); // 土
+  for (let r = 0; r < 3; r++) {
+    const rz = -1 + r * 1;
+    g.add(m(new THREE.BoxGeometry(3.9, 0.2, 0.52), smat(0x8a6848), 0, 0.28, rz)); // うね
+    for (let i = 0; i < 5; i++) {
+      const px = -1.6 + i * 0.8;
+      const leaf = m(new THREE.ConeGeometry(0.24, 0.44, 5), smat(r === 2 ? 0x4a8a3a : 0x3f7a35), px, 0.55, rz);
+      leaf.castShadow = true;
+      g.add(leaf);
+      if (r === 1 && i % 2 === 0) g.add(m(new THREE.SphereGeometry(0.09, 6, 5), smat(0xd8432b), px + 0.14, 0.46, rz + 0.14)); // トマト
+    }
+  }
+  for (const sx of [-1.5, -0.1, 1.3]) g.add(m(new THREE.CylinderGeometry(0.03, 0.03, 1.5, 4), smat(0x9a8a66), sx, 0.85, 0)); // 支柱
   return g;
 }
 
