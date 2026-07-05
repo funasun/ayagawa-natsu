@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { NPCS } from '../data/npcs.js';
 import { makePerson } from '../world/builders.js';
 import { calDay, phaseOf, BUGS } from '../data/data.js';
@@ -12,6 +13,24 @@ export class NpcSystem {
       scene.add(p.group);
       return { def, mesh: p.group, parts: p.parts, t: Math.random() * 10, wanderT: 0, target: null };
     });
+
+    // 「!」マーカー (だいじな ひとの あたまのうえで ぴょこぴょこ はねる)
+    const c = document.createElement('canvas');
+    c.width = 64; c.height = 96;
+    const g = c.getContext('2d');
+    g.font = 'bold 76px sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.lineWidth = 12;
+    g.strokeStyle = '#7a4a00';
+    g.strokeText('!', 32, 50);
+    g.fillStyle = '#ffd452';
+    g.fillText('!', 32, 50);
+    this.marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+    this.marker.scale.set(0.7, 1.05, 1);
+    this.marker.visible = false;
+    scene.add(this.marker);
+    this.markerT = 0;
   }
 
   ctx() {
@@ -37,6 +56,16 @@ export class NpcSystem {
     // 駅前で出迎えてくれたおばあちゃんは、話したあと家にもどる
     if (npc.def.id === 'baachan' && !this.state.flags.metBaachan) {
       this.state.flags.metBaachan = true;
+      // はじめての出会いのあとに、あそびかたガイド (1かいだけ)
+      if (!this.state.flags.tutorial) {
+        this.state.flags.tutorial = true;
+        const t = this.ui.isTouch;
+        await this.ui.showStory([
+          `<b>― あそびかた ―</b><br><br>${t ? 'ひだりの スティック' : 'WASD キー'}で あるく。<br>${t ? 'スティックを おおきく たおすと' : 'Shift を おしながら あるくと'} はしれる。<br><br>きになるものの ちかくで<br>${t ? '「しらべる」ボタン' : 'E キー'}を おすと しらべられるよ。`,
+          `つかまえた むしや さかなは<br>${t ? '「ずかん」ボタン' : 'Z キー'}で ずかんに きろくされる。<br><br>みちに まよったら<br>${t ? '「ちず」ボタン' : 'X キー'}で まちの ちずが みられるよ。`,
+          'この まちには、じかんが ながれとる。<br>あさ、ひる、ゆうがた、よる……<br>じかんや ひにちで、あえるひとや<br>おこることが かわっていくんや。<br><br><b>8がつ31にち</b>まで、<br>じゆうに なつやすみを すごそう。',
+        ]);
+      }
       this.ui.toast('おばあちゃんは さきに いえへ もどっていった。ついていこう (みなみへ)');
     }
     // カブトかクワガタを持ってケンタに会うと、むしずもうを挑まれる (1日1回)
@@ -176,6 +205,8 @@ export class NpcSystem {
 
   update(dt, player, prompts) {
     const c = this.ctx();
+    this.markerT += dt;
+    let markerNpc = null;
     let nearest = null, nearestD = 1e9;
     for (const npc of this.npcs) {
       npc.t += dt;
@@ -236,6 +267,17 @@ export class NpcSystem {
         npc.mesh.rotation.y = Math.atan2(player.pos.x - mp.x, player.pos.z - mp.z);
       }
       if (d < 2.6 && d < nearestD) { nearest = npc; nearestD = d; }
+
+      // 1日め、まだ話していないおばあちゃんに「!」マーカー (きづきやすく)
+      if (npc.def.id === 'baachan' && c.day === 1 && !this.state.flags.metBaachan) markerNpc = npc;
+    }
+
+    if (markerNpc && markerNpc.mesh.visible) {
+      const mp = markerNpc.mesh.position;
+      this.marker.visible = true;
+      this.marker.position.set(mp.x, mp.y + 2.35 + Math.abs(Math.sin(this.markerT * 3.2)) * 0.28, mp.z);
+    } else {
+      this.marker.visible = false;
     }
 
     if (nearest) {

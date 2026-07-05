@@ -61,5 +61,6 @@ export class TouchControls {
     };
     bind('btnA', 'KeyE');
     bind('btnZ', 'KeyZ');
+    bind('btnX', 'KeyX');
   }
 }

@@ -1,6 +1,7 @@
 import { BUGS, FISH, youbi, calDay, WEATHER_LABEL } from '../data/data.js';
 import { bugCount, fishCount } from '../core/state.js';
 import { options, saveOptions } from '../core/options.js';
+import { riverCenterZ, RIVER_HALF, POND, TOBIN, RAIL_PTS, roadDefs, BRIDGE_X, BRIDGE2_X, BRIDGE3_X, TOBIISHI_X } from '../world/world.js';
 
 const WEATHER_ICON = { sunny: '☀', cloudy: '☁', rain: '🌧', storm: '🌀' };
 const $ = (id) => document.getElementById(id);
@@ -14,15 +15,25 @@ export class UI {
     this.zukanOpen = false;
     this.settingsOpen = false;
     this.pauseOpen = false;
+    this.mapOpen = false;
+    this.guideText = '';
     this.els = {
       hud: $('hud'), prompt: $('prompt'), toasts: $('toasts'), fade: $('fade'),
       dialogue: $('dialogue'), dlgName: $('dlg-name'), dlgText: $('dlg-text'),
-      choice: $('choice'), zukan: $('zukan'), settings: $('settings'), pause: $('pause'), diary: $('diary'), title: $('title'), ending: $('ending'),
-      note: $('daynote'),
+      choice: $('choice'), zukan: $('zukan'), map: $('map'), settings: $('settings'), pause: $('pause'), diary: $('diary'), title: $('title'), ending: $('ending'),
+      note: $('daynote'), guide: $('guide'),
     };
   }
 
-  get modal() { return this.modalCount > 0 || this.zukanOpen || this.settingsOpen || this.pauseOpen; }
+  get modal() { return this.modalCount > 0 || this.zukanOpen || this.settingsOpen || this.pauseOpen || this.mapOpen; }
+
+  // ---------- やることガイド ----------
+  setGuide(text) {
+    if ((text || '') === this.guideText) return;
+    this.guideText = text || '';
+    this.els.guide.textContent = this.guideText;
+    this.els.guide.classList.toggle('on', !!this.guideText);
+  }
 
   // ---------- HUD ----------
   updateHUD(clock) {
@@ -131,6 +142,124 @@ export class UI {
     await new Promise((r) => setTimeout(r, 350));
     await this.fade(false, 400);
     this.modalCount--;
+  }
+
+  // ---------- ちず (子どもの手がき風マップ。カメラは常に -z を向くので 上=にし・右=きた) ----------
+  toggleMap(playerPos) {
+    this.mapOpen = !this.mapOpen;
+    if (this.mapOpen) { this.renderMap(playerPos); this.els.map.classList.add('on'); this.audio.sfx('page'); }
+    else this.els.map.classList.remove('on');
+  }
+
+  renderMap(playerPos) {
+    this.els.map.innerHTML = `
+      <div class="map-inner">
+        <div class="map-head">🗾 あやがわちょうの ちず<span class="map-close">とじる [X]</span></div>
+        <canvas width="860" height="580"></canvas>
+      </div>`;
+    this.els.map.querySelector('.map-close').addEventListener('pointerdown', () => this.toggleMap());
+    const cv = this.els.map.querySelector('canvas');
+    const ctx = cv.getContext('2d');
+    const W = cv.width, H = cv.height;
+    // 世界座標 (x: -232..232 / z: -148..148) → 画面 (右=+x, 上=-z)
+    const px = (x) => ((x + 232) / 464) * (W - 60) + 30;
+    const py = (z) => ((z + 148) / 296) * (H - 60) + 30;
+
+    // 紙のじめん
+    ctx.fillStyle = '#eee5c8';
+    ctx.fillRect(0, 0, W, H);
+    // 山のみどり (西のやまぎわ・綾上の丘・十瓶山・高鉢山)
+    ctx.fillStyle = '#cfe0ae';
+    const hill = (x, z, r) => { ctx.beginPath(); ctx.arc(px(x), py(z), r, 0, 7); ctx.fill(); };
+    hill(-130, -118, 52); hill(-200, -120, 70); hill(-60, -165, 60); hill(60, -130, 46); hill(150, -110, 55);
+    hill(TOBIN.x, TOBIN.z, 40); hill(-210, -40, 46); hill(-232, 40, 40); hill(210, 110, 44);
+
+    // 田んぼ (滝宮・陶・棚田)
+    ctx.fillStyle = '#d9e6a8';
+    const paddy = (x, z, w, h) => ctx.fillRect(px(x) - w / 2, py(z) - h / 2, w, h);
+    paddy(31, 61, 90, 46); paddy(103, 35, 62, 42); paddy(-135, -54, 42, 30);
+
+    // 道 (roadDefs から)
+    ctx.strokeStyle = '#d3bd8e'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const rd of roadDefs) {
+      ctx.lineWidth = Math.max(3, rd.w * 1.6);
+      ctx.beginPath();
+      rd.pts.forEach(([x, z], i) => (i ? ctx.lineTo(px(x), py(z)) : ctx.moveTo(px(x), py(z))));
+      ctx.stroke();
+    }
+
+    // 綾川 (上流=みなみ -x から 下流=きた +x へ)
+    ctx.strokeStyle = '#8fbdd8'; ctx.lineWidth = RIVER_HALF * 2 * 1.7;
+    ctx.beginPath();
+    for (let x = -232; x <= 232; x += 8) { const m = x === -232 ? 'moveTo' : 'lineTo'; ctx[m](px(x), py(riverCenterZ(x))); }
+    ctx.stroke();
+    // 北条池
+    ctx.fillStyle = '#8fbdd8';
+    ctx.beginPath(); ctx.arc(px(POND.x), py(POND.z), POND.r * 1.7, 0, 7); ctx.fill();
+
+    // はし・とびいし
+    ctx.fillStyle = '#a5713f';
+    for (const bx of [BRIDGE_X, BRIDGE2_X, BRIDGE3_X]) ctx.fillRect(px(bx) - 4, py(riverCenterZ(bx)) - 13, 8, 26);
+    ctx.fillStyle = '#9a948a';
+    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(px(TOBIISHI_X), py(riverCenterZ(TOBIISHI_X)) + (i - 1.5) * 6, 2.2, 0, 7); ctx.fill(); }
+
+    // ことでんの線路
+    ctx.strokeStyle = '#7a7268'; ctx.lineWidth = 4;
+    ctx.beginPath();
+    RAIL_PTS.forEach(([x, z], i) => (i ? ctx.lineTo(px(x), py(z)) : ctx.moveTo(px(x), py(z))));
+    ctx.stroke();
+    ctx.strokeStyle = '#f2ead2'; ctx.lineWidth = 2; ctx.setLineDash([7, 7]);
+    ctx.beginPath();
+    RAIL_PTS.forEach(([x, z], i) => (i ? ctx.lineTo(px(x), py(z)) : ctx.moveTo(px(x), py(z))));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // めじるし
+    const marks = [
+      [113, 16, '🏠', 'ばあちゃんち'],
+      [109, -10, '🚉', 'すえのえき'],
+      [-21, -25, '🚉', 'たきのみやえき'],
+      [0, -60, '⛩', 'てんまんぐう'],
+      [-49, 63, '🏫', 'しょうがっこう'],
+      [70, -34, '🛒', 'モール'],
+      [-16, 25, '🍧', 'しょうてんがい'],
+      [130, 78, '', 'ほうじょういけ'],
+      [143, 20, '🪦', 'おはか'],
+      [-135, -56, '', 'たなだ'],
+      [-181, -6, '🍎', 'りんごえん'],
+      [160, 61, '🌄', 'みはらしだい'],
+      [21, 31, '🌻', 'ひまわり'],
+      [-70, 42, '', 'こんぴらかいどう'],
+    ];
+    ctx.textAlign = 'center';
+    for (const [x, z, icon, label] of marks) {
+      if (icon) { ctx.font = '17px sans-serif'; ctx.fillStyle = '#000'; ctx.fillText(icon, px(x), py(z) + 5); }
+      ctx.font = 'bold 11px sans-serif';
+      ctx.strokeStyle = 'rgba(247,239,220,0.85)'; ctx.lineWidth = 3;
+      ctx.strokeText(label, px(x), py(z) + 17);
+      ctx.fillStyle = '#5a4a30';
+      ctx.fillText(label, px(x), py(z) + 17);
+    }
+    // かわのなまえ
+    ctx.font = 'bold 12px sans-serif'; ctx.fillStyle = '#4a7898';
+    ctx.fillText('あ や が わ', px(-60), py(riverCenterZ(-60)) + 4);
+
+    // ほういじしん (右=きた)
+    ctx.font = 'bold 12px sans-serif'; ctx.fillStyle = '#8a7455';
+    ctx.fillText('→ きた (すえ)', W - 70, 22);
+    ctx.fillText('← みなみ (あやかみ)', 92, 22);
+
+    // いまここ
+    if (playerPos) {
+      const gx = px(playerPos.x), gz = py(playerPos.z);
+      ctx.beginPath(); ctx.arc(gx, gz, 7, 0, 7); ctx.fillStyle = '#e8503a'; ctx.fill();
+      ctx.lineWidth = 2.5; ctx.strokeStyle = '#fff'; ctx.stroke();
+      ctx.font = 'bold 12px sans-serif';
+      ctx.strokeStyle = 'rgba(247,239,220,0.9)'; ctx.lineWidth = 4;
+      ctx.strokeText('いま ここ!', gx, gz - 12);
+      ctx.fillStyle = '#c03a28';
+      ctx.fillText('いま ここ!', gx, gz - 12);
+    }
   }
 
   // ---------- 図鑑 ----------
@@ -396,7 +525,7 @@ export class UI {
             <button class="title-btn" data-a="new">はじめから</button>
             ${hasSave ? '<button class="title-btn" data-a="continue">つづきから</button>' : ''}
           </div>
-          <div class="title-help">WASD/やじるし: あるく ・ Shift: はしる ・ E: しらべる/はなす ・ Z: ずかん ・ M: おと</div>
+          <div class="title-help">WASD/やじるし: あるく ・ Shift: はしる ・ E: しらべる/はなす ・ Z: ずかん ・ X: ちず ・ M: おと</div>
           <div class="title-note">クリックすると おとが でます</div>
         </div>`;
       this.els.title.classList.add('on');
@@ -404,6 +533,17 @@ export class UI {
         b.addEventListener('pointerdown', () => {
           this.audio.init();
           this.audio.sfx('catch');
+          // スマホ: よこ画面すいしょう → フルスクリーン＋よこ向きロックを ためす (できない端末では回転案内にまかせる)
+          if (this.isTouch) {
+            try {
+              const p = document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+              if (p && p.then) {
+                p.then(() => {
+                  if (screen.orientation && screen.orientation.lock) return screen.orientation.lock('landscape');
+                }).catch(() => {});
+              }
+            } catch { /* iOS Safari などは 非対応。CSSの回転オーバーレイで案内する */ }
+          }
           this.els.title.classList.remove('on');
           this.modalCount--;
           resolve(b.dataset.a);

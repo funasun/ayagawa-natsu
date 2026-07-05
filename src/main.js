@@ -178,10 +178,20 @@ function frame(forcedDt) {
     }
 
     if (input.hit('KeyZ')) ui.toggleZukan();
+    if (input.hit('KeyX')) ui.toggleMap(player.pos);
   } else if (ui.zukanOpen && input.hit('KeyZ')) {
     ui.toggleZukan();
+  } else if (ui.mapOpen && input.hit('KeyX')) {
+    ui.toggleMap();
   } else if (modal || sleeping) {
     ui.showPrompt(null);
+  }
+
+  // やることガイド (つぎに なにをすればいいか、チップで そっと しめす)
+  if (started) {
+    let guide = null;
+    if (state.day === 1 && !state.flags.metBaachan) guide = 'えきまえの おばあちゃんに はなしかけよう';
+    ui.setGuide(guide);
   }
 
   // ポーズ (P / Esc)。ずかん・せってい・会話が開いているときは無効
