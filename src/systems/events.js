@@ -589,6 +589,15 @@ export class EventSystem {
       list.push({ x: 120.5, z: 15.8, r: 2.2, label: 'おくりびを たく (ばあちゃんと)', action: () => this.okuribi() });
     }
 
+    // ---- よるの墓地: ひとだま (19:30すぎ。こわいような、なつかしいような) ----
+    if (c.min >= 1170) {
+      list.push({
+        x: 141.6, z: 20.4, r: 3.4,
+        label: s.flags.obake ? 'ひとだまに はなしかける' : 'あおしろい ひに そっと ちかづく',
+        action: () => this.obakeTalk(),
+      });
+    }
+
     // ひみつのばしょ (いちどきりの発見)
     const secrets = [
       { id: 'hashi', x: 16.5, z: 3.2, label: 'はしのしたを のぞく', sfx: 'splash',
@@ -1189,6 +1198,49 @@ export class EventSystem {
     this.ui.toast('ひが きえるまで、ふたりで だまって みとった');
     s.friend.baachan = (s.friend.baachan || 0) + 1;
     logEvent(s, 'ばあちゃんとおくりびをたいた');
+  }
+
+  // ---- よるの墓地: ひとだま (こわいけど、ほんとうは やさしい) ----
+  async obakeTalk() {
+    const s = this.state;
+    const c = this.clock;
+    if (!s.flags.obake) {
+      // はじめての出会い: びっくり → ごせんぞさまの やさしいこえ
+      this.audio.sfx('flee');
+      this.ui.toast('うわっ…!? あおしろい ひが、ふわ…と ういとる…');
+      await new Promise((r) => setTimeout(r, 1100));
+      this.audio.sfx('suzu');
+      await this.ui.say('???', [
+        '…………',
+        '…ぼうや。こんな よるふけに、ようきたのう。',
+        'こわがらんでも ええ。わしは ずーっと むかしから、ここで ねむっとる もんじゃ。',
+        'わしも こどものころは、あの あやがわで さかなを おいかけて、まっくらに なるまで あそんだもんよ。',
+        '……なつは、ええのう。',
+        'ぼうやの なつやすみは、いましか ない たからもんじゃ。だいじに しなさいよ。',
+      ]);
+      s.flags.obake = true;
+      this.ui.toast('【ふしぎ】ひとだまは ふわりと ゆれて、おはかの うえに もどっていった', 'gold');
+      logEvent(s, 'よるのはかばで ひとだまにあった');
+    } else if (c.day >= 13 && c.day <= 15) {
+      // お盆のあいだは にぎやからしい
+      this.audio.sfx('suzu');
+      await this.ui.say('ひとだま', [
+        'おぼんじゃけんな、いまは みんな いえに かえっとって、はかばは るすばんばっかりよ。',
+        'ぼうやの ばあちゃんちにも、なつかしい ひとが かえっとるはずじゃ。だいじに してあげんさい。',
+      ]);
+      logEvent(s, 'おぼんのよるに ひとだまとはなした');
+    } else {
+      const lines = [
+        ['こんばんは、ぼうや。……ええ よかぜじゃのう。'],
+        ['よるの むしのこえは、なんべん きいても ええもんじゃ。'],
+        ['ほしが ようみえる よるじゃ。わしの ころと おんなじじゃなあ。'],
+        ['はよ かえらんと、ばあちゃんが しんぱいするで。'],
+        ['きょうは なにして あそんだんな? ……ふふ、かおを みたら わかるわ。'],
+      ];
+      this.audio.sfx('suzu');
+      await this.ui.say('ひとだま', lines[c.day % lines.length]);
+      logEvent(s, 'よるのはかばで ひとだまとはなした');
+    }
   }
 
   // はじまりのシーン: モノローグ → ことでん車内 → 陶駅 → おばあちゃんの出迎え

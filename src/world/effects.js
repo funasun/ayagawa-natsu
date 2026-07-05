@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { riverCenterZ, waterLevel } from './world.js';
+import { riverCenterZ, waterLevel, groundY } from './world.js';
 
 // 丸くぼかした光の粒テクスチャ (Pointsが四角く見えるのを防ぐ)
 export function glowDotTex() {
@@ -45,6 +45,21 @@ export class Effects {
     this.fireflies = new THREE.Points(fGeo, new THREE.PointsMaterial({ color: 0xd4ff7a, size: 0.7, map: glowDotTex(), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
     this.fireflies.visible = false;
     scene.add(this.fireflies);
+
+    // ひとだま (よる、陶の山すその墓地に ふわりと浮かぶ。events.obakeTalk と対)
+    const wisp = (sc, op) => {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDotTex(), color: 0xaef0ff, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false }));
+      sp.scale.setScalar(sc);
+      return sp;
+    };
+    this.obake = new THREE.Group();
+    this.obakeCore = wisp(1.7, 0.85);
+    this.obakeW1 = wisp(0.8, 0.5);
+    this.obakeW2 = wisp(0.55, 0.4);
+    this.obake.add(this.obakeCore, this.obakeW1, this.obakeW2);
+    this.obakeY = groundY(141.6, 20.4); // 墓地 (陶の山すそ) の地面の高さ
+    this.obake.visible = false;
+    scene.add(this.obake);
 
     // 虹 (夕立のあと、カメラの正面 = -z の空に ひくく かかる。カメラは常に -z を向くのでここ以外は見えない)
     const rainbowGroup = new THREE.Group();
@@ -144,6 +159,21 @@ export class Effects {
       }
       this.fireflies.geometry.attributes.position.needsUpdate = true;
       this.fireflies.material.opacity = 0.5 + Math.sin(this.t * 2.2) * 0.4;
+    }
+
+    // ひとだま (19:30すぎ、墓地のうえを ゆらゆら ただよう)
+    const obakeOn = min >= 1170 && !this.world.indoor;
+    this.obake.visible = obakeOn;
+    if (obakeOn) {
+      this.obake.position.set(
+        141.6 + Math.sin(this.t * 0.45) * 1.5,
+        this.obakeY + 1.6 + Math.sin(this.t * 1.1) * 0.35,
+        20.4 + Math.cos(this.t * 0.32) * 1.1,
+      );
+      // 尾の光が すこし おくれて ついてくる
+      this.obakeW1.position.set(-0.35 + Math.sin(this.t * 2.1) * 0.3, -0.3 + Math.sin(this.t * 1.7) * 0.12, 0.2);
+      this.obakeW2.position.set(0.4 + Math.sin(this.t * 1.6) * 0.25, -0.45 + Math.cos(this.t * 1.9) * 0.12, -0.15);
+      this.obakeCore.material.opacity = 0.7 + Math.sin(this.t * 3.1) * 0.25;
     }
 
     // 花火 (まつりの夜 19:30-20:40)
