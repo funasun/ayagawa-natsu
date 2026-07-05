@@ -117,7 +117,7 @@ function roadDist(x, z) {
 }
 
 // ==== ことでん琴平線 (挿頭丘方面から滝宮・陶を抜けて高松へ) ====
-export const RAIL_PTS = [[-240, -95], [-90, -60], [-25, -30], [40, -24], [95, -18], [240, 8]];
+export const RAIL_PTS = [[-240, -102], [-145, -90], [-90, -60], [-25, -30], [40, -24], [95, -18], [240, 8]];
 function railDist(x, z) {
   let best = 1e9;
   for (let i = 0; i < RAIL_PTS.length - 1; i++) {
@@ -513,7 +513,7 @@ export function buildWorld(scene) {
 
   // ---------- 綾上の棚田 (山の斜面に石垣の段々。まんなかに あぜ道) ----------
   const tanadaDefs = [];
-  // 線路 (z≈-66〜-74) の北側の斜面にならぶ
+  // 山すその斜面にならぶ (線路は z≈-77〜-90 と、田からはなれた山がわを通る)
   for (const tx of [-149, -142, -128, -121]) for (const tz of [-49, -59]) tanadaDefs.push([tx, tz]);
   const riceTana = makeRiceRow(tanadaDefs.length * 8 * 7);
   let tanaI = 0;
