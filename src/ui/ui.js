@@ -397,6 +397,17 @@ export class UI {
     if (s.today.some((t) => t.includes('おはかまいり'))) closer = 'あったことのない ひいじいちゃんに、こころの なかで あいさつした。';
     if (s.today.some((t) => t.includes('むかえび'))) closer = 'けむりに のって かえってくるなんて、ちょっと かっこいいと おもった。';
     if (s.today.some((t) => t.includes('おくりび'))) closer = '「また らいねん」って ばあちゃんが いってた。わかれは かなしいだけじゃ ないんだ。';
+    // 物語の弧: その日 すすんだ できごとを むすびに
+    if (s.today.some((t) => t.includes('つりざお'))) closer = 'あったことのない じいちゃんの つりざお。にぎると、なんだか せなかが しゃんとする。';
+    if (s.today.some((t) => t.includes('げんじいに じいちゃんの 竿'))) closer = 'げんじいの 30ねんは、ゆめじゃなくて やくそくだった。しょうぶは、まだ おわってない。';
+    if (s.today.some((t) => t.includes('がっきゅうぶんしゅう'))) closer = 'おかあさんにも、ぼくと おなじ なつやすみが あったんだ。かえったら、はなそう。';
+    if (s.today.some((t) => t.includes('かわであそんだ'))) closer = 'みずの つめたさと、いしの あたたかさ。なつは、からだで おぼえるものだと おもう。';
+    if (s.today.some((t) => t.includes('こうしえん'))) closer = 'ラジオの むこうで、しらない せんしゅたちが ないていた。なつは、だれにとっても みじかい。';
+    if (s.today.some((t) => t.includes('とうちゃんを、いっしょに 見おくった'))) closer = 'ケンタは あめのせいだって いってた。……ぼくも、みてないことにした。';
+    if (s.today.some((t) => t.includes('とうちゃんが お盆で'))) closer = 'ケンタが あんなに うれしそうな かお、はじめて みた。おぼんって、いいな。';
+    if (s.today.some((t) => t.includes('せがれが まつり'))) closer = 'つがなくても、まつりの ばんに ならんで 立てたら いい。げんさんの ことばが のこってる。';
+    if (s.today.some((t) => t.includes('ユキちゃんの はなし'))) closer = 'ミナの ともだちは、とおくへ いってしまった。ぼくも、もうすぐ とおくへ かえる。';
+    if (s.today.some((t) => t.includes('ユキちゃんから てがみ'))) closer = 'はなれても ともだち。ひまわりが、そのしるし。……ぼくにも、そんなの できるかな。';
     if (s.day >= 24 && s.day < 29) {
       const lateClosers = [
         'せみの こえが、すこし かわった きがする。',
@@ -568,6 +579,7 @@ export class UI {
       farewell.push('ケンタが ホームの はしまで ならんで はしってきた。<br>「見おくりは なれとんねん! おれ、なかんぞ!!」<br><br>……うん。しっとる。ぼくも、なかない。');
     }
     if (s.flags.keyholderGiven) farewell.push('ミナが かばんを もちあげて みせた。<br>ことでんの キーホルダーが ゆれとる。<br>「ちゃんと つけとるけんね。……また来年、ぜったいやで」');
+    else if (s.flags.minaYuki2) farewell.push('ミナが ホームまで はしってきた。<br>「たね、うえてや。ぜったいやで」<br>したを むいて、それだけ いうと、<br>くるっと せなかを むけて はしっていった。');
     if (s.flags.unagiTold) farewell.push('かいさつの むこうで、げんじいが つりざおを ふっとる。<br>「あやがわの主ー! 来年は わしが 釣るけんのー!」');
     if (farewell.length) pages.push(...farewell);
     pages.push(
@@ -575,6 +587,7 @@ export class UI {
     );
     if (s.flags.rodStory) pages.push('ひざの うえには、しんぶんしに つつんだ<br>じいちゃんの つりざお。<br><br>「来年は その竿と しょうぶじゃ」<br>げんじいの こえが、まだ みみに のこっとる。');
     if (s.flags.bunshuDone) pages.push('かえったら、おかあさんに はなそう。<br><br>ぶんしゅうの こと。かっぱの こと。<br>おかあさんの なつやすみと、<br>ぼくの なつやすみの こと。');
+    if (s.flags.minaYuki2) pages.push('ポケットの おくに、ミナから もらった<br>ひまわりの たねが ひとつぶ。<br><br>「はなれても ともだちや」<br><br>とうきょうの ベランダに うえたら、<br>らいねんの なつ、あやがわと おなじ はなが さく。');
     pages.push(
       `<div class="end-stats">
         <div>つかまえた むし …… ${bugCount(s)} しゅるい</div>

@@ -45,6 +45,10 @@ export class NpcSystem {
   async talk(npc) {
     const c = this.ctx();
     c.friend = this.state.friend[npc.def.id] || 0;
+    // 物語の弧が すすんだ しゅんかんを、その日の にっきに のこす
+    const watch = ['rodBaachan', 'rodStory', 'kentaPapa1', 'kentaPapa2', 'kentaPapa3', 'genMusuko1', 'genMusuko2', 'minaYuki1', 'minaYuki2'];
+    const before = {};
+    for (const k of watch) before[k] = this.state.flags[k];
     // プレイヤーの方を向く
     const lines = npc.def.talk(c);
     if (!this.state.talkedToday[npc.def.id]) {
@@ -67,6 +71,21 @@ export class NpcSystem {
         ]);
       }
       this.ui.toast('おばあちゃんは さきに いえへ もどっていった。ついていこう (みなみへ)');
+    }
+    // 弧のフラグが たったら、その日の にっきネタに 記す
+    const diaryFor = {
+      rodBaachan: 'じいちゃんの つりざおの はなしを、ばあちゃんに きいた',
+      rodStory: 'げんじいに じいちゃんの 竿を 見せた',
+      kentaPapa1: 'ケンタが とうちゃんの はなしを した',
+      kentaPapa2: 'ケンタの とうちゃんが お盆で かえってきとった',
+      kentaPapa3: 'ケンタの とうちゃんを、いっしょに 見おくった',
+      genMusuko1: 'げんさんの せがれの はなしを きいた',
+      genMusuko2: 'げんさんの せがれが まつりの 屋台を てつどうとった',
+      minaYuki1: 'ミナの てんこうした ともだち、ユキちゃんの はなしを きいた',
+      minaYuki2: 'ミナが ユキちゃんから てがみを もらったと 話しとった',
+    };
+    for (const k of watch) {
+      if (!before[k] && this.state.flags[k] && diaryFor[k]) logEvent(this.state, diaryFor[k]);
     }
     // カブトかクワガタを持ってケンタに会うと、むしずもうを挑まれる (1日1回)
     if (npc.def.id === 'kenta') await this.maybeBugSumo();
