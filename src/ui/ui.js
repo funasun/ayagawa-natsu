@@ -9,6 +9,7 @@ export class UI {
   constructor(state, audio) {
     this.state = state;
     this.audio = audio;
+    this.isTouch = matchMedia('(pointer: coarse)').matches;
     this.modalCount = 0;
     this.zukanOpen = false;
     this.settingsOpen = false;
@@ -73,7 +74,7 @@ export class UI {
         i++;
         if (i >= lines.length) {
           window.removeEventListener('keydown', advance, true);
-          box.removeEventListener('pointerdown', advance);
+          window.removeEventListener('pointerdown', advance);
           box.classList.remove('on');
           setTimeout(() => { this.modalCount--; resolve(); }, 60);
         } else show();
@@ -81,7 +82,8 @@ export class UI {
       show();
       setTimeout(() => {
         window.addEventListener('keydown', advance, true);
-        box.addEventListener('pointerdown', advance);
+        // 会話ちゅうは ほかのボタンがぜんぶ かくれるので、画面のどこをタッチしても つぎへすすめる
+        window.addEventListener('pointerdown', advance);
       }, 120);
     });
   }
@@ -295,7 +297,7 @@ export class UI {
         <div class="diary-page">
           <div class="diary-head">${header}</div>
           <div class="diary-body">${text}</div>
-          <div class="diary-next">— E で つぎのひへ —</div>
+          <div class="diary-next">— ${this.isTouch ? 'タッチ' : 'E'} で つぎのひへ —</div>
         </div>`;
       this.els.diary.classList.add('on');
       this.audio.sfx('sleep');
@@ -364,7 +366,7 @@ export class UI {
     this.els.ending.classList.add('on');
     for (const p of pages) {
       await new Promise((resolve) => {
-        this.els.ending.innerHTML = `<div class="end-page">${p}<div class="diary-next">— E で つづく —</div></div>`;
+        this.els.ending.innerHTML = `<div class="end-page">${p}<div class="diary-next">— ${this.isTouch ? 'タッチ' : 'E'} で つづく —</div></div>`;
         const onKey = (e) => {
           if (e.type === 'keydown' && !['KeyE', 'Space', 'Enter'].includes(e.code)) return;
           window.removeEventListener('keydown', onKey, true);
