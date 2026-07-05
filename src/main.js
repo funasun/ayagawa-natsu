@@ -46,6 +46,11 @@ document.getElementById('opt-toggle').addEventListener('pointerdown', (e) => {
   e.preventDefault();
   ui.toggleSettings();
 });
+document.getElementById('pause-toggle').addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  // 会話やイベントちゅうは ポーズできない (すでに時間は止まっているため)
+  if (started && !sleeping && (!ui.modal || ui.pauseOpen)) ui.togglePause();
+});
 const input = new Input();
 new TouchControls(input);
 const world = buildWorld(scene);
@@ -124,6 +129,7 @@ async function boot() {
   await ui.fade(true, 500);
   player.snapCamera();
   started = true;
+  document.body.classList.add('started'); // ポーズボタンを表示
   if (state.day === 1 && !state.flags.metBaachan && state.min <= DAY_START + 10) {
     // はじめて: オープニング (モノローグ → ことでん車内 → 陶駅でおばあちゃんの出迎え)
     await events.opening();
@@ -176,6 +182,11 @@ function frame(forcedDt) {
     ui.toggleZukan();
   } else if (modal || sleeping) {
     ui.showPrompt(null);
+  }
+
+  // ポーズ (P / Esc)。ずかん・せってい・会話が開いているときは無効
+  if ((input.hit('KeyP') || input.hit('Escape')) && started && !sleeping && (!ui.modal || ui.pauseOpen)) {
+    ui.togglePause();
   }
 
   if (input.hit('KeyM')) {

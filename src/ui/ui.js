@@ -12,15 +12,16 @@ export class UI {
     this.modalCount = 0;
     this.zukanOpen = false;
     this.settingsOpen = false;
+    this.pauseOpen = false;
     this.els = {
       hud: $('hud'), prompt: $('prompt'), toasts: $('toasts'), fade: $('fade'),
       dialogue: $('dialogue'), dlgName: $('dlg-name'), dlgText: $('dlg-text'),
-      choice: $('choice'), zukan: $('zukan'), settings: $('settings'), diary: $('diary'), title: $('title'), ending: $('ending'),
+      choice: $('choice'), zukan: $('zukan'), settings: $('settings'), pause: $('pause'), diary: $('diary'), title: $('title'), ending: $('ending'),
       note: $('daynote'),
     };
   }
 
-  get modal() { return this.modalCount > 0 || this.zukanOpen || this.settingsOpen; }
+  get modal() { return this.modalCount > 0 || this.zukanOpen || this.settingsOpen || this.pauseOpen; }
 
   // ---------- HUD ----------
   updateHUD(clock) {
@@ -160,6 +161,28 @@ export class UI {
     this.els.zukan.querySelectorAll('.ztab').forEach((b) =>
       b.addEventListener('pointerdown', () => this.renderZukan(b.dataset.t)));
     this.els.zukan.querySelector('.zclose').addEventListener('pointerdown', () => this.toggleZukan());
+  }
+
+  // ---------- ポーズ ----------
+  togglePause() {
+    this.pauseOpen = !this.pauseOpen;
+    if (this.pauseOpen) {
+      this.els.pause.innerHTML = `
+        <div class="pause-inner">
+          <div class="pause-big">⏸ ポーズちゅう</div>
+          <div class="pause-sub">じかんは とまっとるよ。<br>ゆっくり きゅうけいしてな</div>
+          <button class="pause-resume">つづける</button>
+        </div>`;
+      this.els.pause.querySelector('.pause-resume').addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        this.togglePause();
+      });
+      this.els.pause.classList.add('on');
+      this.audio.sfx('page');
+    } else {
+      this.els.pause.classList.remove('on');
+      this.audio.sfx('page');
+    }
   }
 
   // ---------- せってい ----------
