@@ -144,6 +144,19 @@ body.modal #pause-toggle { display: none; }
   .title-main { letter-spacing: 4px; }
 }
 
+/* 時間帯カラーグレーディング: 真昼は白くとぶ日ざし、夕方は茜、夜はあおい やみ (JSが背景色を更新) */
+#grade {
+  position: fixed; inset: 0; pointer-events: none; z-index: 4;
+  mix-blend-mode: soft-light;
+  transition: background-color 4s linear;
+}
+#grade::before {
+  /* 彩度をすこし おとして、フィルムの 褪せた色に */
+  content: ''; position: absolute; inset: 0;
+  background: rgba(125, 125, 125, 0.16);
+  mix-blend-mode: saturation;
+}
+
 /* ノスタルジック・フィルター: ビネット + 暖色 + フィルム粒子 */
 #filter {
   position: fixed; inset: 0; pointer-events: none; z-index: 5;

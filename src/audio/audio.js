@@ -25,17 +25,19 @@ export class AudioEngine {
     // 台風の風
     this.layers.wind = this.noiseLayer(noiseBuf, 280, 0.8, 0.13);
 
-    // ヒグラシ / スズムシ / まつり囃子 / ツクツクボウシはパターン再生
+    // ヒグラシ / スズムシ / まつり囃子 / ツクツクボウシ / カラスはパターン再生
     this.layers.higurashi = { gain: { value: 0 } };
     this.layers.cricket = { gain: { value: 0 } };
     this.layers.matsuri = { gain: { value: 0 } };
     this.layers.tsukutsuku = { gain: { value: 0 } };
-    this._patternGains = { higurashi: 0, cricket: 0, matsuri: 0, tsukutsuku: 0 };
+    this.layers.crow = { gain: { value: 0 } };
+    this._patternGains = { higurashi: 0, cricket: 0, matsuri: 0, tsukutsuku: 0, crow: 0 };
 
     setInterval(() => this.higurashiPhrase(), 4200);
     setInterval(() => this.cricketChirp(), 1200);
     setInterval(() => this.matsuriBeat(), 1900);
     setInterval(() => this.tsukutsukuPhrase(), 6500);
+    setInterval(() => this.crowCaw(), 9000);
   }
 
   makeNoise() {
@@ -92,10 +94,11 @@ export class AudioEngine {
     this.setLayer('kuma', !raining && phase === 'morning' && !lateSummer ? 0.12 : 0, 3);
     this.setLayer('rain', raining ? (weather === 'storm' ? 0.3 : 0.18) : 0, 1.5);
     this.setLayer('wind', weather === 'storm' ? 0.28 : 0, 2);
-    this._patternGains.higurashi = !raining && phase === 'evening' ? 0.5 : 0;
+    this._patternGains.higurashi = !raining && phase === 'evening' ? 0.9 : 0;
     this._patternGains.cricket = !raining && phase === 'night' ? 0.4 : 0;
     this._patternGains.matsuri = festivalNight ? 0.5 : 0;
     this._patternGains.tsukutsuku = !raining && day && lateSummer ? 0.5 : 0;
+    this._patternGains.crow = !raining && phase === 'evening' ? 0.6 : 0; // 夕方、とおくで カラスがなく
   }
 
   tone(freq, dur, { type = 'sine', vol = 0.2, when = 0, glide = null } = {}) {
@@ -133,8 +136,24 @@ export class AudioEngine {
   higurashiPhrase() {
     const v = this._patternGains.higurashi;
     if (!v || this.muted) return;
+    // カナカナカナ…… (ちかくの声と、やまの ほうから こだまのように かえってくる声)
     for (let i = 0; i < 9; i++) {
       this.tone(3700 - i * 60, 0.1, { vol: 0.05 * v, when: i * 0.15 });
+    }
+    for (let i = 0; i < 7; i++) {
+      this.tone(3450 - i * 55, 0.1, { vol: 0.022 * v, when: 1.9 + i * 0.16 });
+    }
+  }
+
+  crowCaw() {
+    const v = this._patternGains.crow;
+    if (!v || this.muted || Math.random() < 0.35) return;
+    // カァー…カァー (とおくの ねぐらへ かえっていく)
+    const n = 1 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < n; i++) {
+      const w = i * (0.7 + Math.random() * 0.3);
+      this.tone(760 + Math.random() * 60, 0.34, { type: 'sawtooth', vol: 0.016 * v, when: w, glide: 520 });
+      this.noiseBurst(1400, 0.2, { vol: 0.012 * v, when: w });
     }
   }
 
@@ -226,6 +245,15 @@ export class AudioEngine {
         this.tone(550, 0.6, { vol: 0.08, when: 0.4 });
         this.tone(440, 0.6, { vol: 0.08, when: 0.5 });
         break;
+      case 'kane': {
+        // お寺の鐘 (ゴーン……)。基音と ひずんだ倍音が ながく のこる
+        const f0 = 146;
+        [[f0, 4.5, 0.2], [f0 * 2.76, 3.2, 0.07], [f0 * 4.07, 1.8, 0.045], [f0 * 1.02, 4.2, 0.1]].forEach(([f, d, vl]) => {
+          this.tone(f, d, { type: 'sine', vol: vl });
+        });
+        this.noiseBurst(500, 0.25, { vol: 0.06, type: 'lowpass' });
+        break;
+      }
       case 'sleep':
         [784, 659, 523].forEach((f, i) => this.tone(f, 0.5, { vol: 0.12, when: i * 0.35 }));
         break;

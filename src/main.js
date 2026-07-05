@@ -107,7 +107,10 @@ async function sleep(auto) {
   }
   await ui.fade(false, 1200);
   const cal = calDay(state.day);
-  ui.toast(`8月${state.day}日の あさ。${cal.note ? ' 〜' + cal.note + '〜' : ''}`);
+  // 後半は「おわり」が すこしずつ ちかづいてくる
+  const left = 31 - state.day;
+  const leftNote = state.day >= 25 && left > 0 ? ` ……なつやすみは あと${left}にち。` : '';
+  ui.toast(`8月${state.day}日の あさ。${cal.note ? ' 〜' + cal.note + '〜' : ''}${leftNote}`);
   sleeping = false;
 }
 
@@ -142,6 +145,19 @@ async function boot() {
 // --- メインループ ---
 let audioT = 0;
 let currentAction = null;
+
+// 時間帯によるスクリーンの色被せ (真昼は白い日ざし、夕方は茜、夜はあおい やみ)
+const gradeEl = document.getElementById('grade');
+function gradeColor(min, weather) {
+  const rainy = weather === 'rain' || weather === 'storm';
+  if (min >= 1170 || min < 340) return 'rgba(35, 55, 120, 0.26)';   // 夜
+  if (min >= 1105) return 'rgba(125, 70, 140, 0.20)';               // マジックアワーの うす紫
+  if (min >= 1030) return 'rgba(255, 115, 45, 0.21)';               // 夕方の茜
+  if (min >= 980) return 'rgba(255, 172, 80, 0.14)';                // 16時すぎの 金色
+  if (rainy) return 'rgba(148, 158, 175, 0.18)';                    // 雨の鉛色
+  if (min >= 640) return 'rgba(255, 250, 226, 0.20)';               // 真昼の 白くとぶ日ざし
+  return 'rgba(198, 222, 255, 0.10)';                               // 朝の すんだ空気
+}
 
 function frame(forcedDt) {
   const dt = forcedDt !== undefined ? forcedDt : Math.min(clock3.getDelta(), 0.05);
@@ -212,6 +228,8 @@ function frame(forcedDt) {
   audioT -= dt;
   if (audioT <= 0) {
     audioT = 1;
+    // 時間帯カラーグレーディング (CSS transition がなめらかに つないでくれる)
+    gradeEl.style.backgroundColor = gradeColor(state.min, gameClock.weather);
     audio.setScene({
       phase: phaseOf(state.min),
       weather: gameClock.weather, // 夕立ちゅうは 'rain' になる

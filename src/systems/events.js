@@ -556,6 +556,11 @@ export class EventSystem {
       list.push({ x: 114.5, z: 19.5, r: 2.4, label: 'えんがわで はなびを する', action: () => this.hanabi() });
     }
 
+    // えんがわで ひとやすみ (なにもしない「間」の ぜいたく。時間だけが すぎていく)
+    if (c.min >= 380 && c.min < 1140 && c.day >= 2) {
+      list.push({ x: 114.5, z: 19.5, r: 2.4, label: 'えんがわに こしかける', action: () => this.engawaRest() });
+    }
+
     // 竹やぶのひみつきち (ケンタに さそわれるまでは たちいりきんし)
     if (s.flags.kentaBase) {
       list.push({ x: -13.8, z: -76.2, r: 2.4, label: 'ひみつきちで すごす', action: () => this.himitsukichi() });
@@ -1072,6 +1077,41 @@ export class EventSystem {
   }
 
   // ---- 十瓶山の見晴らし台 (夕方は 特別な ながめ) ----
+  // ---- えんがわの「間」: なにもしないで、ただ じかんが すぎるのを あじわう ----
+  async engawaRest() {
+    const s = this.state;
+    const c = this.clock;
+    this.audio.sfx('slurp');
+    this.ui.toast('えんがわに こしかけた。ばあちゃんが むぎちゃを もってきてくれた');
+    await new Promise((r) => setTimeout(r, 1700));
+    await this.ui.fadePulse();
+    s.min = Math.min(s.min + 45, 1255);
+    const ph = phaseOf(s.min);
+    if (ph === 'morning') {
+      this.audio.sfx('suzu');
+      await this.ui.showStory([
+        'あさの かぜが えんがわを とおりぬけていく。<br>のきさきの ふうりんが、ちりん、と なった。<br><br>きょうは、なにして あそぼう。',
+      ]);
+    } else if (ph === 'day') {
+      await this.ui.showStory([
+        'セミしぐれの なか、つめたい むぎちゃを ごくり。<br>グラスの そとがわに、みずの つゆが ついとる。<br><br>なにも せんでも、じかんは すぎていく。<br>……それが、なんか ええ。',
+      ]);
+    } else if (ph === 'evening' && c.day >= 20) {
+      await this.ui.showStory([
+        'ゆうやけが、きのうより すこし はやい きがする。<br><br>ばあちゃんが よこに こしかけて、ぽつりと いった。<br>「なつやすみも、あと すこしやなあ」<br><br>……うん。しっとる。いま、いわんといて。',
+      ]);
+    } else if (ph === 'evening') {
+      await this.ui.showStory([
+        'そらが すこしずつ 茜色に なっていく。<br>やまの ほうで、ヒグラシが なきはじめた。<br><br>たのしい 1にちは、なんで こんなに はやいんやろ。',
+      ]);
+    } else {
+      await this.ui.showStory([
+        'よるの えんがわ。すずむしの こえ。<br>せんぷうきも いらんくらい、かぜが すずしい。<br><br>とうきょうでは みたことない かずの ほしが みえる。',
+      ]);
+    }
+    logEvent(s, 'えんがわでぼーっとした');
+  }
+
   async miharashi() {
     const s = this.state;
     const c = this.clock;
@@ -1371,6 +1411,14 @@ export class EventSystem {
       this.state.flags['chime' + this.clock.day] = true;
       this.audio.chime();
       this.ui.toast('とおくの スピーカーから 5じの チャイム。……そろそろ かえる じかんや');
+    }
+
+    // 18:00 やまの おてらから かねの音 (そとにいるとき)
+    if (!this.world.indoor && this.clock.min >= 1080 && this.clock.min < 1120
+        && !this.state.flags['kane' + this.clock.day]) {
+      this.state.flags['kane' + this.clock.day] = true;
+      this.audio.sfx('kane');
+      this.ui.toast('やまの おてらから、かねの おと。……ゴーン……');
     }
 
     // 夕立: ふりはじめの ひとこと (そとにいるとき)

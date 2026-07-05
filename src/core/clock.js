@@ -16,7 +16,9 @@ export class GameClock {
   tick(dt) {
     const s = this.state;
     if (s.min >= DAY_END) return;
-    s.min += dt * TIME_SCALE * this.rate;
+    // 夕方 (16:40-19:30) は時間がゆっくり流れる。夕焼けと ヒグラシの「間」を あじわうため
+    const evening = s.min >= 1000 && s.min < 1170 ? 0.62 : 1;
+    s.min += dt * TIME_SCALE * this.rate * evening;
     if (s.min >= DAY_END) {
       s.min = DAY_END;
       if (this.onDayEnd) this.onDayEnd();

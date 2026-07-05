@@ -85,4 +85,4 @@ export function phaseOf(min) {
 
 export const DAY_START = 360;   // 6:00
 export const DAY_END = 1290;    // 21:30 じどうしゅうしん
-export const TIME_SCALE = 2.5;  // 実1秒 = ゲーム2.5分 (1日 ≈ 6分)
+export const TIME_SCALE = 1.7;  // 実1秒 = ゲーム1.7分 (1日 ≈ 10分。いそがず、なつやすみを あじわう速度)

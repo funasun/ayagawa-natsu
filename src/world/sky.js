@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { smat } from './builders.js';
 
+// 夕方 (16:50-19:30) は 金色 → 茜 → 薄紫 → 群青 と、ながく ていねいに 暮れていく
 const KEYS = [
   [340, 0x2a3055], [370, 0xf7c98a], [430, 0xaed6ee], [720, 0x74bdf0],
-  [960, 0x8ac4e8], [1020, 0xf7b36a], [1090, 0xe8703f], [1150, 0x5f5384],
-  [1210, 0x232a4d], [1290, 0x181e3c],
+  [950, 0x8ac4e8], [1010, 0xf2b968], [1055, 0xf08040], [1095, 0xd85a40],
+  [1130, 0x9a5570], [1165, 0x4a3f75], [1210, 0x232a4d], [1290, 0x181e3c],
 ];
 const WEATHER_MIX = { sunny: [0, 0], cloudy: [0.55, 0.25], rain: [0.78, 0.5], storm: [0.9, 0.65] };
 const GRAY = new THREE.Color(0x93a1ab);
@@ -162,24 +163,26 @@ export class Sky {
     this.uniforms.topColor.value.copy(top);
     this.dome.position.set(playerPos.x, 0, playerPos.z);
 
-    this.scene.fog.color.copy(horizon);
-    this.scene.fog.near = weather === 'storm' ? 40 : weather === 'rain' ? 65 : 110;
-    this.scene.fog.far = weather === 'storm' ? 180 : weather === 'rain' ? 240 : 380;
+    const warm = THREE.MathUtils.clamp(1 - Math.abs(t - 0.9) * 4.5, 0, 1);
+    const warmMorning = THREE.MathUtils.clamp(1 - Math.abs(t - 0.05) * 8, 0, 1) * 0.7;
+    const w2 = Math.max(warm, warmMorning);
 
-    // 太陽 6:00東 → 19:00西
+    // 夕方は とおくの山なみが 茜色に とけて 霞む
+    this.scene.fog.color.copy(horizon);
+    this.scene.fog.near = weather === 'storm' ? 40 : weather === 'rain' ? 65 : 110 - w2 * 45;
+    this.scene.fog.far = weather === 'storm' ? 180 : weather === 'rain' ? 240 : 380 - w2 * 90;
+
+    // 太陽 6:00東 → 19:00西。夕方と朝は 低い光で 影が ながく のびる
     const az = Math.PI * (1 - t);
     const elev = Math.sin(t * Math.PI) * 1.15 + 0.05;
     this.sun.position.set(
-      playerPos.x + Math.cos(az) * 80,
-      Math.max(8, Math.sin(elev) * 90),
+      playerPos.x + Math.cos(az) * (80 + w2 * 40),
+      Math.max(7, Math.sin(elev) * 90 * (1 - w2 * 0.62)),
       playerPos.z + 30,
     );
     this.sunTarget.position.copy(playerPos);
     const wLight = weather === 'storm' ? 0.25 : weather === 'rain' ? 0.4 : weather === 'cloudy' ? 0.7 : 1;
-    this.sun.intensity = (0.7 + sunDay * 1.7) * wLight * (1 - night * 0.85);
-    const warm = THREE.MathUtils.clamp(1 - Math.abs(t - 0.93) * 6, 0, 1);
-    const warmMorning = THREE.MathUtils.clamp(1 - Math.abs(t - 0.05) * 8, 0, 1) * 0.7;
-    const w2 = Math.max(warm, warmMorning);
+    this.sun.intensity = (0.7 + sunDay * 1.7 + w2 * 0.5) * wLight * (1 - night * 0.85);
     this.sun.color.setHSL(0.10 - w2 * 0.055, 0.5 + w2 * 0.4, 0.75 - w2 * 0.16);
     this.hemi.intensity = (0.62 + sunDay * 0.55) * (weather === 'storm' ? 0.5 : 1) * (1 - night * 0.5);
     this.hemi.color.copy(horizon).lerp(new THREE.Color(0xffffff), 0.45);
@@ -199,11 +202,17 @@ export class Sky {
     this.moon.position.set(playerPos.x - 150, 120, playerPos.z - 200);
     this.moon.material.color.setScalar(0.7 + night * 0.3);
 
-    // 入道雲は昼だけ堂々と
+    // 入道雲は昼だけ堂々と。夕方は 茜色に そまる
+    const cloudTint = new THREE.Color(weather === 'sunny' ? 0xffffff : weather === 'cloudy' ? 0xd8dde0 : 0x8f979e);
+    if (weather === 'sunny' || weather === 'cloudy') cloudTint.lerp(new THREE.Color(0xffa060), w2 * 0.75);
     for (const cl of this.cumulus) {
       cl.visible = weather !== 'storm';
       cl.traverse((o) => {
-        if (o.material) o.material.emissiveIntensity = 0.2 + sunDay * 0.25 + w2 * 0.3;
+        if (o.material) {
+          o.material.emissiveIntensity = 0.2 + sunDay * 0.25 + w2 * 0.3;
+          o.material.color.copy(cloudTint);
+          o.material.emissive.setHex(0x9aa4b0).lerp(new THREE.Color(0xff7a40), w2 * 0.8);
+        }
       });
     }
 
@@ -214,7 +223,7 @@ export class Sky {
       if (cl.position.x > 240) cl.position.x = -240;
       cl.children.forEach((b) => {
         b.material.opacity = cloudOp * (1 - night * 0.65);
-        b.material.color.set(weather === 'sunny' ? 0xffffff : weather === 'cloudy' ? 0xd8dde0 : 0x8f979e);
+        b.material.color.copy(cloudTint);
       });
     });
   }
