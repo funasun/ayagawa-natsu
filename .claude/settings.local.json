@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(node -e ' *)",
+      "Bash(npx vite *)",
+      "mcp__Claude_Preview__preview_start",
+      "WebSearch",
+      "WebFetch(domain:ja.wikipedia.org)",
+      "Bash(sed -n '60,110p' src/world/world.js)",
+      "Bash(sed -n '340,420p' src/world/world.js)"
+    ]
+  }
+}
