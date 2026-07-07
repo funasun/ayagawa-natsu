@@ -29,11 +29,44 @@ document.body.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 600);
-window.addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
+
+// --- 画面の向き: スマホが たてむきのまま 5秒たったら、ステージを90°回して強制よこ画面 ---
+let forcedLandscape = false;
+function applyViewport() {
+  // 強制よこ画面のときは body が回転するぶん、幅と高さを入れかえて描く
+  const w = forcedLandscape ? innerHeight : innerWidth;
+  const h = forcedLandscape ? innerWidth : innerHeight;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
+  renderer.setSize(w, h);
+}
+const coarsePointer = matchMedia('(pointer: coarse)');
+let forceTimer = null;
+function evalOrientation() {
+  const portrait = innerHeight > innerWidth;
+  if (portrait && coarsePointer.matches) {
+    // たてむき: 5秒だけ「よこにしてね」案内を見せ、それでも たてなら強制回転
+    if (!forcedLandscape && forceTimer === null) {
+      forceTimer = setTimeout(() => {
+        forceTimer = null;
+        forcedLandscape = true;
+        document.body.classList.add('force-landscape');
+        applyViewport();
+      }, 5000);
+    }
+  } else {
+    // 実機を よこにした / PC: 強制回転を解除
+    if (forceTimer !== null) { clearTimeout(forceTimer); forceTimer = null; }
+    if (forcedLandscape) {
+      forcedLandscape = false;
+      document.body.classList.remove('force-landscape');
+    }
+  }
+  applyViewport();
+}
+window.addEventListener('resize', evalOrientation);
+window.addEventListener('orientationchange', () => setTimeout(evalOrientation, 200));
+evalOrientation();
 
 // --- ゲームオブジェクト ---
 const state = newState();
@@ -250,4 +283,14 @@ renderer.setAnimationLoop(() => frame());
 boot();
 
 // デバッグ用 (コンソールから時間・日付を動かせる)
-window.__game = { state, player, npcs, bugs, fishing, events, ui, step: (dt = 0.016) => frame(dt), get clock() { return gameClock; } };
+window.__game = {
+  state, player, npcs, bugs, fishing, events, ui, renderer, camera,
+  step: (dt = 0.016) => frame(dt),
+  get clock() { return gameClock; },
+  // 実機なしで 強制よこ画面を確認するためのフック
+  forceLandscape(on) {
+    forcedLandscape = !!on;
+    document.body.classList.toggle('force-landscape', forcedLandscape);
+    applyViewport();
+  },
+};

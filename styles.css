@@ -425,3 +425,13 @@ body.modal #guide { display: none; }
 @media (orientation: portrait) and (pointer: coarse) {
   #rotate { display: flex; }
 }
+/* 5秒たっても縦のままなら、ステージごと90°回して強制よこ画面にする */
+body.force-landscape {
+  position: fixed;
+  width: 100vh; height: 100vw;
+  top: 50%; left: 50%;
+  transform-origin: center center;
+  transform: translate(-50%, -50%) rotate(90deg);
+  overflow: hidden;
+}
+body.force-landscape #rotate { display: none; }

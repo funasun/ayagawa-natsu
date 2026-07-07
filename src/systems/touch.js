@@ -26,8 +26,16 @@ export class TouchControls {
 
     const setAxis = (e) => {
       const rect = joy.getBoundingClientRect();
-      let dx = (e.clientX - (rect.left + rect.width / 2)) / R;
-      let dy = (e.clientY - (rect.top + rect.height / 2)) / R;
+      // 指の位置は「画面座標」。強制よこ画面のときはステージを +90°(時計回り)
+      // 回しているので、局所座標へ逆回転してから軸に入れる (指の向き = ゲームの向き)
+      const sx = (e.clientX - (rect.left + rect.width / 2)) / R;
+      const sy = (e.clientY - (rect.top + rect.height / 2)) / R;
+      let dx, dy;
+      if (document.body.classList.contains('force-landscape')) {
+        dx = sy; dy = -sx;
+      } else {
+        dx = sx; dy = sy;
+      }
       const len = Math.hypot(dx, dy);
       if (len > 1) { dx /= len; dy /= len; }
       input.axisX = dx;
