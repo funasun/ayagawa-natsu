@@ -1,6 +1,7 @@
 import { BUGS, FISH, youbi, calDay, WEATHER_LABEL } from '../data/data.js';
 import { bugCount, fishCount } from '../core/state.js';
 import { options, saveOptions } from '../core/options.js';
+import { fsSupported, fsElement, toggleFullscreen } from '../core/fullscreen.js';
 import { riverCenterZ, RIVER_HALF, POND, TOBIN, RAIL_PTS, roadDefs, BRIDGE_X, BRIDGE2_X, BRIDGE3_X, TOBIISHI_X } from '../world/world.js';
 
 const WEATHER_ICON = { sunny: '☀', cloudy: '☁', rain: '🌧', storm: '🌀' };
@@ -328,6 +329,12 @@ export class UI {
       { key: 'sound', label: 'おと', desc: 'BGM と こうかおん (M キーでも きりかえ)' },
       { key: 'camBob', label: 'カメラのゆれ', desc: 'あるくときの じょうげのゆれ。よいやすいひとは OFF' },
     ];
+    // 全画面トグル (対応端末のみ。URLバーを消してよこ画面であそぶ)
+    const fsRow = fsSupported() ? `
+      <div class="set-row">
+        <div class="set-label">ぜんがめん<small>URLバーを かくして よこ画面で あそぶ</small></div>
+        <button class="set-btn ${fsElement() ? 'on' : ''}" data-fs="1">${fsElement() ? 'ON' : 'OFF'}</button>
+      </div>` : '';
     this.els.settings.innerHTML = `
       <div class="set-inner">
         <div class="set-head">せってい <span class="set-close">とじる</span></div>
@@ -336,8 +343,9 @@ export class UI {
             <div class="set-label">${r.label}<small>${r.desc}</small></div>
             <button class="set-btn ${options[r.key] ? 'on' : ''}" data-k="${r.key}">${options[r.key] ? 'ON' : 'OFF'}</button>
           </div>`).join('')}
+        ${fsRow}
       </div>`;
-    this.els.settings.querySelectorAll('.set-btn').forEach((b) =>
+    this.els.settings.querySelectorAll('.set-btn[data-k]').forEach((b) =>
       b.addEventListener('pointerdown', () => {
         const k = b.dataset.k;
         options[k] = !options[k];
@@ -346,6 +354,12 @@ export class UI {
         this.audio.sfx('page');
         this.renderSettings();
       }));
+    const fsBtn = this.els.settings.querySelector('.set-btn[data-fs]');
+    if (fsBtn) fsBtn.addEventListener('pointerdown', () => {
+      toggleFullscreen(); // pointerdown 起点なので requestFullscreen が通る
+      this.audio.sfx('page');
+      setTimeout(() => { if (this.settingsOpen) this.renderSettings(); }, 120);
+    });
     this.els.settings.querySelector('.set-close').addEventListener('pointerdown', () => this.toggleSettings());
   }
 

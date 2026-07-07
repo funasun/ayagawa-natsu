@@ -14,6 +14,7 @@ import { EventSystem } from './systems/events.js';
 import { AudioEngine } from './audio/audio.js';
 import { UI } from './ui/ui.js';
 import { options, saveOptions } from './core/options.js';
+import { enterFullscreen, fsElement, fsSupported, lockLandscape } from './core/fullscreen.js';
 import { DAY_START, calDay, phaseOf } from './data/data.js';
 
 // --- three.js 基本 ---
@@ -67,6 +68,20 @@ function evalOrientation() {
 window.addEventListener('resize', evalOrientation);
 window.addEventListener('orientationchange', () => setTimeout(evalOrientation, 200));
 evalOrientation();
+
+// スマホは 最初のタップで 全画面へ (URLバーを消す)。Fullscreen API 対応端末のみ。
+// requestFullscreen は「ユーザー操作ちゅう」でないと通らないので pointerdown を起点にする。
+if (coarsePointer.matches && fsSupported()) {
+  let fsArmed = true;
+  const tryFs = () => {
+    if (!fsArmed || fsElement()) return;
+    enterFullscreen().then(() => { fsArmed = false; }).catch(() => {});
+  };
+  window.addEventListener('pointerdown', tryFs, true);
+  const onFsChange = () => { if (fsElement()) { fsArmed = false; lockLandscape(); } else { fsArmed = true; } };
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('webkitfullscreenchange', onFsChange);
+}
 
 // --- ゲームオブジェクト ---
 const state = newState();
