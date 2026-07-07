@@ -33,6 +33,7 @@ const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 60
 
 // --- 画面の向き: スマホが たてむきのまま 5秒たったら、ステージを90°回して強制よこ画面 ---
 let forcedLandscape = false;
+let iosHintOn = false; // iPhone むけ「ホーム画面に追加」案内の表示ちゅうは強制回転を待つ
 function applyViewport() {
   // 強制よこ画面のときは body が回転するぶん、幅と高さを入れかえて描く
   const w = forcedLandscape ? innerHeight : innerWidth;
@@ -45,7 +46,7 @@ const coarsePointer = matchMedia('(pointer: coarse)');
 let forceTimer = null;
 function evalOrientation() {
   const portrait = innerHeight > innerWidth;
-  if (portrait && coarsePointer.matches) {
+  if (portrait && coarsePointer.matches && !iosHintOn) {
     // たてむき: 5秒だけ「よこにしてね」案内を見せ、それでも たてなら強制回転
     if (!forcedLandscape && forceTimer === null) {
       forceTimer = setTimeout(() => {
@@ -82,6 +83,33 @@ if (coarsePointer.matches && fsSupported()) {
   document.addEventListener('fullscreenchange', onFsChange);
   document.addEventListener('webkitfullscreenchange', onFsChange);
 }
+
+// iPhone むけ: Fullscreen API が使えない端末では「ホーム画面に追加」で全画面になる。
+// 初回だけ、小さな案内を出す (案内ちゅうは強制回転を待って、読む時間をつくる)。
+const a2hsEl = document.getElementById('a2hs');
+let a2hsTimer = null;
+function hideIosHint() {
+  if (!iosHintOn) return;
+  iosHintOn = false;
+  a2hsEl.classList.remove('on');
+  if (a2hsTimer) { clearTimeout(a2hsTimer); a2hsTimer = null; }
+  evalOrientation(); // 案内を消したら、必要なら強制回転タイマーを始める
+}
+function maybeIosHint() {
+  const ua = navigator.userAgent;
+  const iOS = /iPhone|iPod/.test(ua) || (/iPad/.test(ua)) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua));
+  const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+  // 全画面APIが使える端末(iPad等)や、すでにホーム画面から起動ずみなら 出さない
+  if (!iOS || standalone || fsSupported() || !coarsePointer.matches) return;
+  if (localStorage.getItem('ayagawa.a2hs') === '1') return;
+  localStorage.setItem('ayagawa.a2hs', '1');
+  iosHintOn = true;
+  a2hsEl.classList.add('on');
+  a2hsTimer = setTimeout(hideIosHint, 12000);
+}
+a2hsEl.querySelector('.a2hs-close').addEventListener('pointerdown', (e) => {
+  e.preventDefault(); e.stopPropagation(); hideIosHint();
+});
 
 // --- ゲームオブジェクト ---
 const state = newState();
@@ -170,6 +198,7 @@ async function boot() {
   state.min = 1035; // タイトル裏は夕方の光
   const saved = loadState();
   setTimeout(() => { ui.els.fade.style.opacity = 0; }, 400);
+  maybeIosHint(); // iPhone なら タイトルのうちに「ホーム画面に追加」案内を出す
   const action = await ui.showTitle(!!saved);
   if (action === 'continue' && saved) {
     Object.assign(state, saved);
