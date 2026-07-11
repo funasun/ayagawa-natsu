@@ -21,6 +21,8 @@ export class Player {
     this.running = false;
     this.camPos = new THREE.Vector3();
     this.lookUpT = 0;
+    // カメラの向き (0 = 南から北をみる)。ドラッグや Q/R キーで 360度まわせる
+    this.camYaw = 0;
     this.snapCamera();
   }
 
@@ -35,7 +37,9 @@ export class Player {
   }
 
   snapCamera() {
-    this.camPos.copy(this.pos).add(new THREE.Vector3(0, 6.8, 13));
+    if (this.world.indoor) this.camYaw = 0; // 屋内は 正面すえおき
+    const y = this.camYaw;
+    this.camPos.copy(this.pos).add(new THREE.Vector3(13 * Math.sin(y), 6.8, 13 * Math.cos(y)));
     this.clampCamY(this.camPos);
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(this.pos.x, this.pos.y + 2.8, this.pos.z);
@@ -52,19 +56,39 @@ export class Player {
       if (inp.down('KeyD') || inp.down('ArrowRight')) dx += 1;
       stick = Math.hypot(inp.axisX, inp.axisY);
       if (stick > 0.18) { dx += inp.axisX; dz += inp.axisY; }
+      // カメラ回転 (画面ドラッグ / Q・R キー)。屋内は 部屋のつくりに合わせて正面固定
+      if (!this.world.indoor) {
+        let yawIn = inp.yawDelta;
+        if (inp.down('KeyQ')) yawIn += dt * 2.4;
+        if (inp.down('KeyR')) yawIn -= dt * 2.4;
+        this.camYaw += yawIn;
+      }
     }
+    inp.yawDelta = 0; // 会話ちゅうの ドラッグぶんが たまらないよう、毎フレームすてる
+    if (this.world.indoor && this.camYaw !== 0) {
+      // 屋内にはいったら、近いほうまわりで するっと正面へもどす
+      let y = this.camYaw;
+      while (y > Math.PI) y -= Math.PI * 2;
+      while (y < -Math.PI) y += Math.PI * 2;
+      y *= Math.max(0, 1 - dt * 5);
+      this.camYaw = Math.abs(y) < 0.01 ? 0 : y;
+    }
+    const cy = Math.cos(this.camYaw), sy = Math.sin(this.camYaw);
     this.moving = dx !== 0 || dz !== 0;
     // スティックを外周まで倒すと走る
     this.running = this.moving && (inp.down('ShiftLeft') || inp.down('ShiftRight') || stick > 0.92);
     if (this.moving) {
-      const len = Math.hypot(dx, dz);
+      // 入力はカメラ基準 → 世界の向きへ変換 (みぎ = カメラのみぎ)
+      const wx = dx * cy + dz * sy;
+      const wz = -dx * sy + dz * cy;
+      const len = Math.hypot(wx, wz);
       const speed = this.running ? RUN : WALK;
-      const nx = (dx / len) * speed * dt;
-      const nz = (dz / len) * speed * dt;
+      const nx = (wx / len) * speed * dt;
+      const nz = (wz / len) * speed * dt;
       const p = this.pos;
       if (!this.world.isBlocked(p.x + nx, p.z, festivalOn)) p.x += nx;
       if (!this.world.isBlocked(p.x, p.z + nz, festivalOn)) p.z += nz;
-      const target = Math.atan2(dx / len, dz / len);
+      const target = Math.atan2(wx / len, wz / len);
       let diff = target - this.heading;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
@@ -85,11 +109,15 @@ export class Player {
     // カメラのゆれOFF (酔い対策) のときは上下バウンドを止める
     this.mesh.position.y = gy + (this.moving && options.camBob ? Math.abs(Math.sin(this.walkT)) * 0.09 : 0);
 
-    // カメラ追従 (花火の夜に立ち止まると空を見上げる)
+    // カメラ追従 (花火の夜に立ち止まると空を見上げる)。camYaw で 360度どこからでも
     const wantUp = lookUp && !this.moving ? 1 : 0;
     this.lookUpT += (wantUp - this.lookUpT) * Math.min(1, dt * 1.4);
     const up = this.lookUpT;
-    const desired = new THREE.Vector3(this.pos.x, this.pos.y + 6.8 - up * 2.8, this.pos.z + 13);
+    const desired = new THREE.Vector3(
+      this.pos.x + 13 * sy,
+      this.pos.y + 6.8 - up * 2.8,
+      this.pos.z + 13 * cy,
+    );
     this.clampCamY(desired);
     this.camPos.lerp(desired, Math.min(1, dt * 4.5));
     this.camera.position.copy(this.camPos);

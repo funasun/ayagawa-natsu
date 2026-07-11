@@ -5,6 +5,8 @@ export class Input {
     // タッチスティックのアナログ入力 (-1..1)
     this.axisX = 0;
     this.axisY = 0;
+    // このフレームぶんの カメラ回転量 (ラジアン)。画面ドラッグが ここに たまる
+    this.yawDelta = 0;
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
       this.keys.add(e.code);

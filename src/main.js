@@ -129,6 +129,27 @@ document.getElementById('pause-toggle').addEventListener('pointerdown', (e) => {
 });
 const input = new Input();
 new TouchControls(input);
+
+// --- カメラ回転: なにもない ところを よこにドラッグ (マウス/タッチ両対応) ---
+{
+  const cv = renderer.domElement;
+  let dragId = null, lastX = 0, lastY = 0, acc = 0;
+  cv.addEventListener('pointerdown', (e) => {
+    dragId = e.pointerId; lastX = e.clientX; lastY = e.clientY; acc = 0;
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (dragId !== e.pointerId) return;
+    // 強制よこ画面ちゅうは 画面が90°回っているので、見た目のよこ = 端末のたて
+    const fl = document.body.classList.contains('force-landscape');
+    const dx = fl ? (e.clientY - lastY) : (e.clientX - lastX);
+    lastX = e.clientX; lastY = e.clientY;
+    acc += Math.abs(dx);
+    if (acc > 6) input.yawDelta -= dx * 0.0052; // 6px の あそびで タップと区別
+  });
+  const endDrag = (e) => { if (dragId === e.pointerId) dragId = null; };
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
+}
 const world = buildWorld(scene);
 const sky = new Sky(scene);
 const effects = new Effects(scene, world, gameClock, audio);
