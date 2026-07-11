@@ -217,6 +217,12 @@ async function boot() {
     await ui.fade(false, 1000);
     ui.toast(`8月${state.day}日 ― つづきから`);
   }
+  // タッチ操作の ひとには、はじめの1回だけ ボタンの ばしょを ひからせて おしえる
+  if (ui.touchUI && !state.flags.touchTut) {
+    state.flags.touchTut = true;
+    await ui.showTutorial();
+    saveState(state);
+  }
 }
 
 // --- メインループ ---
@@ -260,7 +266,7 @@ function frame(forcedDt) {
     if (!world.indoor) fishing.update(dt, player, fishing.active ? [] : prompts, fishing.active ? interactHit : false);
 
     if (fishing.active) {
-      ui.showPrompt(fishing.phase === 'bite' ? 'いまだ!!' : 'まつ… (E でやめる)');
+      ui.showPrompt(fishing.phase === 'bite' ? 'いまだ!!' : 'まつ… (やめられる)');
       currentAction = null;
     } else {
       prompts.sort((a, b) => a.dist - b.dist);

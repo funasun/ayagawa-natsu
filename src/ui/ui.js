@@ -17,16 +17,20 @@ export class UI {
     this.settingsOpen = false;
     this.pauseOpen = false;
     this.mapOpen = false;
+    this.tutorialOpen = false;
     this.guideText = '';
     this.els = {
       hud: $('hud'), prompt: $('prompt'), toasts: $('toasts'), fade: $('fade'),
       dialogue: $('dialogue'), dlgName: $('dlg-name'), dlgText: $('dlg-text'),
       choice: $('choice'), zukan: $('zukan'), map: $('map'), settings: $('settings'), pause: $('pause'), diary: $('diary'), title: $('title'), ending: $('ending'),
-      note: $('daynote'), guide: $('guide'),
+      note: $('daynote'), guide: $('guide'), tutorial: $('tutorial'),
     };
   }
 
-  get modal() { return this.modalCount > 0 || this.zukanOpen || this.settingsOpen || this.pauseOpen || this.mapOpen; }
+  get modal() { return this.modalCount > 0 || this.zukanOpen || this.settingsOpen || this.pauseOpen || this.mapOpen || this.tutorialOpen; }
+
+  // いま タッチ操作UI (スティック+ボタン) が表示されているか
+  get touchUI() { return document.body.classList.contains('touch'); }
 
   // ---------- やることガイド ----------
   setGuide(text) {
@@ -51,11 +55,62 @@ export class UI {
 
   showPrompt(label) {
     if (label) {
-      this.els.prompt.textContent = `E ${label}`;
+      // タッチのときは「E」の代わりに、みぎしたの「しらべる」ボタンが光って知らせる
+      this.els.prompt.textContent = this.touchUI ? label : `E ${label}`;
       this.els.prompt.classList.add('on');
+      document.body.classList.add('can-act');
     } else {
       this.els.prompt.classList.remove('on');
+      document.body.classList.remove('can-act');
     }
+  }
+
+  // ---------- そうさガイド (タッチ初回に自動表示 / せっていから再表示) ----------
+  showTutorial() {
+    return new Promise((resolve) => {
+      this.tutorialOpen = true;
+      document.body.classList.add('tutorial');
+      const el = this.els.tutorial;
+      const t = this.touchUI;
+      const tap = t ? 'タップ' : 'クリック';
+      const steps = t ? [
+        { mark: 'tut-s1', html: '<b>あるく</b><br>↙ ひだりしたの まるに ゆびを おいて、いきたい ほうへ スライド。<br><small>そとまで ぐーっと たおすと はしれるよ</small>' },
+        { mark: 'tut-s2', html: '<b>しらべる・はなす</b><br>ひとや ものに ちかづくと あんないが でて、↘「しらべる」ボタンが <b>きいろく ひかる</b>。ひかったら おそう。<br><small>はなす・むしとり・つり・かいもの、ぜんぶ この ボタン</small>' },
+        { mark: 'tut-s3', html: '<b>ずかん・ちず</b><br>↘「ずかん」で つかまえた むしと さかなの きろく、「ちず」で まちの ちずが みられる。<br><small>かいわは がめんの どこを タップしても すすむよ</small>' },
+      ] : [
+        { mark: '', html: '<b>あるく</b><br><b>WASD</b> か やじるしキーで あるく。<br><b>Shift</b> を おしながらだと はしれる。' },
+        { mark: '', html: '<b>しらべる・はなす</b><br>ひとや ものに ちかづくと、したに あんないが でる。<br>そのとき <b>E キー</b>で しらべる・はなす。' },
+        { mark: '', html: '<b>そのほか</b><br><b>Z</b> ずかん / <b>X</b> ちず / <b>P</b> ポーズ / <b>M</b> おと' },
+      ];
+      let i = 0;
+      const clearMarks = () => document.body.classList.remove('tut-s1', 'tut-s2', 'tut-s3');
+      const render = () => {
+        clearMarks();
+        if (steps[i].mark) document.body.classList.add(steps[i].mark);
+        el.innerHTML = `<div class="tut-bubble">${steps[i].html}` +
+          `<div class="tut-next">${i === steps.length - 1 ? `${tap}して はじめる` : `${tap}で つぎへ ▼`}</div></div>`;
+      };
+      const advance = (e) => {
+        if (e.type === 'keydown' && !['KeyE', 'Space', 'Enter'].includes(e.code)) return;
+        e.preventDefault();
+        this.audio.sfx('page');
+        i++;
+        if (i >= steps.length) {
+          window.removeEventListener('pointerdown', advance);
+          window.removeEventListener('keydown', advance, true);
+          clearMarks();
+          el.classList.remove('on');
+          document.body.classList.remove('tutorial');
+          setTimeout(() => { this.tutorialOpen = false; resolve(); }, 60);
+        } else render();
+      };
+      render();
+      el.classList.add('on');
+      setTimeout(() => {
+        window.addEventListener('pointerdown', advance);
+        window.addEventListener('keydown', advance, true);
+      }, 350);
+    });
   }
 
   toast(text, style) {
@@ -344,6 +399,10 @@ export class UI {
             <button class="set-btn ${options[r.key] ? 'on' : ''}" data-k="${r.key}">${options[r.key] ? 'ON' : 'OFF'}</button>
           </div>`).join('')}
         ${fsRow}
+        <div class="set-row">
+          <div class="set-label">そうさガイド<small>あそびかたの せつめいを もういちど みる</small></div>
+          <button class="set-btn" data-tut="1">みる</button>
+        </div>
       </div>`;
     this.els.settings.querySelectorAll('.set-btn[data-k]').forEach((b) =>
       b.addEventListener('pointerdown', () => {
@@ -359,6 +418,10 @@ export class UI {
       toggleFullscreen(); // pointerdown 起点なので requestFullscreen が通る
       this.audio.sfx('page');
       setTimeout(() => { if (this.settingsOpen) this.renderSettings(); }, 120);
+    });
+    this.els.settings.querySelector('.set-btn[data-tut]').addEventListener('pointerdown', () => {
+      this.toggleSettings(); // せっていを とじてから ガイドを ひらく
+      this.showTutorial();
     });
     this.els.settings.querySelector('.set-close').addEventListener('pointerdown', () => this.toggleSettings());
   }

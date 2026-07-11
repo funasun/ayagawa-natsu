@@ -1444,7 +1444,7 @@ export class EventSystem {
       this.ui.toast('「まもなく〜、すえ、すえ です」');
       await this.warpTo(null, 109.4, -7.6, Math.PI, 700);
       this.ui.toast('8月1日 ― なつやすみが はじまった!', 'gold');
-      this.ui.toast('えきまえで おばあちゃんが まっとる! (E ではなす)');
+      this.ui.toast(`えきまえで おばあちゃんが まっとる! (${this.ui.touchUI ? '「しらべる」' : 'E '}ではなす)`);
       logEvent(s, 'ひとりでことでんにのってあやがわにきた');
       return;
     }
