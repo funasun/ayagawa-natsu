@@ -1,5 +1,22 @@
-import { logEvent } from '../core/state.js';
-import { phaseOf, youbi, TIME_SCALE } from '../data/data.js';
+import { logEvent, capCount, bugCount, fishCount } from '../core/state.js';
+import { phaseOf, youbi, TIME_SCALE, CAPS } from '../data/data.js';
+
+// 王冠ガチャ (でやすさのおもみつき)
+function pickCap() {
+  let r = Math.random() * 100;
+  for (const cp of CAPS) { r -= cp.w; if (r <= 0) return cp; }
+  return CAPS[0];
+}
+
+// 王冠が おちている場所の候補 (日がわりで 1か所だけ)
+const CAP_SPOTS = [
+  { x: -64, z: 23, hint: 'だがしやの うら' },
+  { x: 28, z: 74, hint: 'たんぼの あぜみち' },
+  { x: 20, z: 22, hint: 'はしの たもと' },
+  { x: 42, z: 14, hint: 'かわらの くさむら' },
+  { x: 92, z: 20, hint: 'すえの たんぼみち' },
+  { x: 128, z: 62, hint: 'ため池の ほとり' },
+];
 
 // ことでん琴平線 陶→瓦町: 実際の所要時間 約30分をゲーム内時間で再現
 const RIDE_GAME_MIN = 30;
@@ -137,6 +154,18 @@ export class EventSystem {
           await this.ui.fade(false, 700);
           this.ui.toast('セミのこえを ききながら うとうと…… おきたら もう ゆうがたや');
           logEvent(s, 'ふとんでひるねした');
+        },
+      });
+      list.push({
+        x: sp.caps.x, z: sp.caps.z, r: 1.5, label: '王冠コレクションを みる',
+        action: async () => {
+          const n = capCount(s);
+          if (n === 0) {
+            this.ui.toast('たなは まだ からっぽ。だがしやで ラムネを のむと 王冠が もらえるらしい');
+            return;
+          }
+          const rows = CAPS.map((cp) => (s.caps[cp.id] ? `${cp.name} ×${s.caps[cp.id]}` : '???')).join(' ・ ');
+          await this.ui.choice(`ラムネの王冠 (${n}/${CAPS.length}しゅるい)<br><small>${rows}</small>`, ['とじる']);
         },
       });
       list.push({
@@ -404,18 +433,101 @@ export class EventSystem {
       });
     }
 
-    // 駄菓子屋 (8:00-18:00)
-    if (c.min >= 480 && c.min <= 1080 && !s.flags['dagashi' + c.day]) {
+    // うどんづくりの てつだい (10:00-14:00。綾川は うどん発祥の地! いちどきりの おもいで)
+    if (!s.flags.udonHelp && c.min >= 600 && c.min <= 840 && c.day >= 5) {
       list.push({
-        x: -63, z: 21, r: 2.2, label: 'だがしを かう',
+        x: -53.5, z: 21.5, r: 2,
+        label: 'うどんづくりを てつだう',
         action: async () => {
-          s.flags['dagashi' + c.day] = true;
-          this.audio.sfx('coin');
-          const items = ['きなこぼう', 'ラムネ', 'あんずあめ', 'ソースせんべい', 'ガラガラくじ'];
-          const item = items[(c.day * 3) % items.length];
-          const atari = Math.random() < 0.2;
-          this.ui.toast(`${item}を かった!${atari ? ' 【あたりつき! もう1こ!】' : ''}`, atari ? 'gold' : null);
-          logEvent(s, `だがしやで${item}をかった`);
+          const i = await this.ui.choice('げんさん「おっ、ぼうず。うどんうち、やってみるか?<br>綾川はな、【うどん発祥の地】いわれとるんやで」', ['やってみる!', 'またこんど']);
+          if (i !== 0) return;
+          s.flags.udonHelp = true;
+          await this.ui.showStory([
+            'こむぎこに しおみずを まぜて、ぐっ、ぐっと こねる。<br><br>「そうや、たいじゅうを のせて こねるんや」',
+            'ビニールに つつんだ きじを、あしで ふみふみ、ふみふみ…<br><br>なんだか おどりみたいで たのしい。',
+            'ねかせた きじを ぼうで のばして、たたんで、<br>とん、とん、とん…と ほそく きっていく。<br><br>「じょうずやないか! ええ コシが でとるで」',
+            'ゆであがった うどんに、いりこの だしを かけて…<br><br>じぶんで うった うどんは、<br>せかいで いちばん うまい きが した。',
+          ]);
+          this.audio.sfx('slurp');
+          this.ui.toast('げんさん「また てつだいに こいや!」', 'gold');
+          s.friend.gen = (s.friend.gen || 0) + 2;
+          logEvent(s, 'げんさんとうどんをうった (綾川はうどん発祥の地)');
+        },
+      });
+    }
+
+    // 駄菓子屋 (8:00-18:00)。ラムネの王冠あつめと 日がわりだがし
+    if (c.min >= 480 && c.min <= 1080) {
+      list.push({
+        x: -63, z: 21, r: 2.2, label: 'だがしやで かいもの',
+        action: async () => {
+          const ramuneN = s.flags['ramune' + c.day] || 0;
+          const opts = [];
+          const acts = [];
+          if (ramuneN < 3) { opts.push('ラムネを のむ (30えん)'); acts.push('ramune'); }
+          if (!s.flags['dagashi' + c.day]) { opts.push('だがしを かう (20えん)'); acts.push('dagashi'); }
+          opts.push('やめとく');
+          const i = await this.ui.choice(`いらっしゃい! なにに する?<br><small>おこづかい ${s.money}えん ・ 王冠 ${capCount(s)}/${CAPS.length}しゅるい</small>`, opts);
+          const pick = acts[i];
+          if (pick === 'ramune') {
+            if (s.money < 30) { this.ui.toast('おこづかいが たりない…'); return; }
+            s.money -= 30;
+            s.flags['ramune' + c.day] = ramuneN + 1;
+            this.audio.sfx('coin');
+            this.ui.toast('カラン…と ビーだまを おとして、ラムネを ごくごく。しゅわしゅわや!');
+            this.gainCap('ラムネのふたから');
+            logEvent(s, 'だがしやでラムネをのんだ');
+          } else if (pick === 'dagashi') {
+            if (s.money < 20) { this.ui.toast('おこづかいが たりない…'); return; }
+            s.money -= 20;
+            s.flags['dagashi' + c.day] = true;
+            this.audio.sfx('coin');
+            const items = ['きなこぼう', 'あんずあめ', 'ソースせんべい', 'ふがし', 'カレーせん'];
+            const item = items[(c.day * 3) % items.length];
+            const atari = Math.random() < 0.2;
+            this.ui.toast(`${item}を かった!${atari ? ' 【あたりつき! もう1こ!】' : ''}`, atari ? 'gold' : null);
+            logEvent(s, `だがしやで${item}をかった`);
+          }
+        },
+      });
+    }
+
+    // 王冠が どこかに おちている (日がわり。みつけたら ひろえる)
+    if (!s.flags['capspot' + c.day]) {
+      const spot = CAP_SPOTS[(c.day * 7 + 3) % CAP_SPOTS.length];
+      list.push({
+        x: spot.x, z: spot.z, r: 2, label: 'なにか おちてる…',
+        action: async () => {
+          s.flags['capspot' + c.day] = true;
+          if (Math.random() < 0.3) {
+            s.money += 10;
+            this.audio.sfx('coin');
+            this.ui.toast('10えん玉を ひろった! ラッキー!', 'gold');
+            logEvent(s, `${spot.hint}で10えん玉をひろった`);
+          } else {
+            this.audio.sfx('coin');
+            this.gainCap('みちばたで');
+          }
+        },
+      });
+    }
+
+    // 滝宮の念仏踊 (8/25。ずっとむかしから 雨ごいの おどりが つたわっとる)
+    if (c.event === 'matsuri' && !s.flags.matsuriOdori) {
+      list.push({
+        x: 0, z: -55, r: 4.5, label: 'ねんぶつおどりを みる',
+        action: async () => {
+          s.flags.matsuriOdori = true;
+          this.audio.sfx('suzu');
+          await this.ui.showStory([
+            'ドン、ドン… カン、カン…<br><br>たいこと かねの おとに あわせて、<br>むぎわらぼうしの ひとたちが 輪になって おどっとる。',
+            '「ナームアミドーヤ」<br><br>まんなかの あかい はっぴの ひとが、<br>おおきな うちわを ふりあげた。',
+            'ばあちゃんが おしえてくれた。<br><br>「これはな、【滝宮の念仏踊(ねんぶつおどり)】いうてな、<br>千年ちかく つづいとる 雨ごいの おどりなんやで」',
+            '「むかし ひでりで こまっとったとき、<br>菅原道真(すがわらのみちざね)公が いのって、<br>あめを ふらせてくれたんやと。<br>そのよろこびが、いまも つづいとるんや」',
+            'せんねん…。<br><br>ぼくの なつやすみの なんまんばいも むかしから、<br>この おどりは ここで おどられてきたんや。',
+          ]);
+          logEvent(s, 'せんねんつづく滝宮の念仏踊をみた');
+          this.ui.toast('ずっと むかしから つづく おどり、すごかった…', 'gold');
         },
       });
     }
@@ -695,6 +807,30 @@ export class EventSystem {
           ];
           this.ui.toast(`パンパン… (${wishes[c.day % wishes.length]})`);
           logEvent(s, 'てんまんぐうにおまいりした');
+        },
+      });
+    }
+
+    // おみくじ (天満宮の しゃむしょ。1日1かい)
+    if (!s.flags['omikuji' + c.day] && c.min >= 480 && c.min <= 1080) {
+      list.push({
+        x: 3.2, z: -60.5, r: 1.8, label: 'おみくじを ひく (10えん)',
+        action: async () => {
+          if (s.money < 10) { this.ui.toast('おこづかいが たりない…'); return; }
+          s.money -= 10;
+          s.flags['omikuji' + c.day] = true;
+          this.audio.sfx('suzu');
+          const kuji = [
+            ['だいきち', 'きょうは なんでも うまくいく ひ!<br>めずらしい 虫や さかなに あえるかも', 'gold'],
+            ['きち', 'いいことが ありそうな ひ。<br>かわの ちかくで はっけんが あるかも'],
+            ['ちゅうきち', 'まあまあの ひ。<br>ごはんを しっかり たべると うんきが あがる'],
+            ['しょうきち', 'あわてず ゆっくりの ひ。<br>ひるねを すると いいことが あるかも'],
+            ['すえきち', 'わすれものに ちゅうい。<br>でも ゆうがたに いいことが まっとるよ'],
+          ];
+          const [rank, text, gold] = kuji[Math.floor(Math.random() * kuji.length)];
+          await this.ui.choice(`おみくじ 【${rank}】<br><small>${text}</small>`, ['えだに むすんで かえる']);
+          this.ui.toast(`おみくじは ${rank}やった!`, gold || null);
+          logEvent(s, `おみくじをひいたら${rank}だった`);
         },
       });
     }
@@ -1471,8 +1607,48 @@ export class EventSystem {
     this.clock.rate = 1;
   }
 
+  // 王冠を1こ手にいれる (ラムネのおまけ / みちばたで ひろう)
+  gainCap(viaText) {
+    const s = this.state;
+    const cap = pickCap();
+    const isNew = !s.caps[cap.id];
+    s.caps[cap.id] = (s.caps[cap.id] || 0) + 1;
+    const n = capCount(s);
+    this.ui.toast(
+      isNew ? `はじめての「${cap.name}」の王冠! (${n}/${CAPS.length}しゅるい)` : `「${cap.name}」の王冠だった (2こめいこうは つくえに たまっていく)`,
+      isNew ? 'gold' : null,
+    );
+    if (isNew) logEvent(s, `${viaText}「${cap.name}」の王冠をてにいれた`);
+    if (isNew && n === CAPS.length) {
+      this.ui.toast('王冠 ぜんしゅるい コンプリート!! へやの たなに ぜんぶ ならんだ!', 'gold');
+      logEvent(s, 'ラムネの王冠をぜんしゅるいあつめた');
+    }
+    if (this.world.interior2f && this.world.interior2f.capShelf) this.world.interior2f.capShelf.refresh(s);
+    return cap;
+  }
+
   update(dt, player, prompts) {
     this.player = player;
+    // ずかんのごほうび (5しゅるいふえるごとに、ばあちゃんから おこづかい)
+    const zn = bugCount(this.state) + fishCount(this.state);
+    if (zn >= (this.state.zukanReward + 1) * 5) {
+      this.state.zukanReward += 1;
+      this.state.money += 50;
+      this.audio.sfx('coin');
+      this.ui.toast(`ずかんが ${this.state.zukanReward * 5}しゅるいに! ばあちゃんが おこづかいを 50えん くれた!`, 'gold');
+      logEvent(this.state, `ずかんが${this.state.zukanReward * 5}しゅるいになって、ばあちゃんにほめられた`);
+    }
+    // 王冠おとしものの目じるし (ひろうまで きらきら まわる)
+    const mark = this.world.capMarker;
+    if (mark) {
+      const on = !this.world.indoor && !this.state.flags['capspot' + this.clock.day];
+      mark.visible = on;
+      if (on) {
+        const spot = CAP_SPOTS[(this.clock.day * 7 + 3) % CAP_SPOTS.length];
+        mark.position.set(spot.x, this.world.groundY(spot.x, spot.z) + 0.1, spot.z);
+        mark.rotation.y += dt * 2.2;
+      }
+    }
     // ことでん乗車中: 車窓を流し、駅アナウンスを出し、時間どおりに到着する
     if (this.ride) {
       const r = this.ride;
@@ -1520,6 +1696,14 @@ export class EventSystem {
     if (this.festivalOn) {
       const glow = this.clock.min >= 1020 ? 1.2 : 0;
       for (const m of this.world.lanternMats) m.emissiveIntensity = glow;
+    }
+    // 念仏踊りの輪が ゆっくり まわる (8/25 のまつり)
+    if (isMatsuri && this.world.odoriGroup) {
+      const t = performance.now() / 1000;
+      this.world.odoriGroup.rotation.y = t * 0.4;
+      this.world.odoriDancers.forEach((p, i) => {
+        p.position.y = Math.abs(Math.sin(t * 3.2 + i * 1.05)) * 0.14;
+      });
     }
 
     // 17:00 まちの防災無線から『夕焼け小焼け』のチャイム (そとにいるときだけ きこえる)

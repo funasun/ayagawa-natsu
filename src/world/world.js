@@ -5,7 +5,7 @@ import {
   makeBusStop, makeYatai, makeChochin, makeTrain, makeStation, makeRiceRow, makeFence,
   makeBench, makeMonument, makeAppleTree, makeKamaato,
   makeSignBoard, makeMall, makeTownHall, makeCar, makeSchool, makeHatake,
-  makeMichishirube, makeHideout, makeGrave, makeLookout,
+  makeMichishirube, makeHideout, makeGrave, makeLookout, makePerson,
 } from './builders.js';
 import { buildInterior, buildUpstairs } from './interior.js';
 import { buildTrainRide } from './train.js';
@@ -1004,9 +1004,44 @@ export function buildWorld(scene) {
     festival.add(c2);
     c2.traverse((o) => { if (o.userData && o.userData.lantern) world.lanternMats.push(o.material); });
   }
+  // 滝宮の念仏踊 (国指定重要無形民俗文化財。8/25のまつりで 輪になっておどる)
+  const odori = new THREE.Group();
+  const odoriDancers = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const p = makePerson({ body: i % 2 ? 0x3b5ed8 : 0xe8e2d0, hat: 0xc8a84e, scale: 0.95 }).group;
+    p.position.set(Math.cos(a) * 3.2, 0, Math.sin(a) * 3.2);
+    p.rotation.y = Math.atan2(-Math.cos(a), -Math.sin(a)); // 輪のまんなかを むく
+    odori.add(p);
+    odoriDancers.push(p);
+  }
+  const gechi = makePerson({ body: 0xc83a32, hat: 0x2a2018 }).group; // まんなかで うちわを ふる下知(げち)役
+  odori.add(gechi);
+  const taiko = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.6, 10), smat(0xa04a28));
+  taiko.position.set(1.3, 0.62, 0);
+  taiko.rotation.z = Math.PI / 2;
+  odori.add(taiko);
+  odori.position.set(0, gy(0, -55), -55);
+  festival.add(odori);
+  world.odoriGroup = odori;
+  world.odoriDancers = odoriDancers;
+
   festival.visible = false;
   scene.add(festival);
   world.festivalGroup = festival;
+
+  // ---------- 王冠のおとしもの の目じるし (日がわりの場所で きらっと ひかる) ----------
+  const capMark = new THREE.Group();
+  capMark.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.05, 10), smat(0xf0c040, { emissive: 0x8a6a1a }))));
+  const capGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.32, 8, 6),
+    new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.22, depthWrite: false }),
+  );
+  capGlow.position.y = 0.1;
+  capMark.add(capGlow);
+  capMark.visible = false;
+  scene.add(capMark);
+  world.capMarker = capMark;
 
   // ---------- あやがわ小学校 (旧金毘羅街道のさき。8/9 は校庭で夏まつり) ----------
   // カメラは -z を向くので、校しゃは校庭の北 (z小) に置き、正面を +z に向ける

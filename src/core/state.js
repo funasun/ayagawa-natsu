@@ -10,6 +10,9 @@ export function newState() {
     talkedToday: {}, // npcId -> true
     stamps: 0,       // ラジオ体操
     udon: 0,         // 朝うどん回数
+    money: 150,      // おこづかい (えん)
+    caps: {},        // ラムネの王冠コレクション id -> こすう
+    zukanReward: 0,  // ずかんのごほうびを もらった回数 (5種きざみ)
     today: [],       // その日の日記ネタ
     diary: [],       // {day, weather, lines}
     flags: {},
@@ -40,3 +43,4 @@ export function logEvent(state, text) {
 
 export function bugCount(state) { return Object.keys(state.bugs).length; }
 export function fishCount(state) { return Object.keys(state.fish).length; }
+export function capCount(state) { return Object.keys(state.caps).length; }

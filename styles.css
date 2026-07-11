@@ -218,6 +218,8 @@ body.modal #pause-toggle { display: none; }
 }
 .hud-date { font-weight: bold; }
 .hud-time { font-size: 20px; font-weight: bold; color: #2c5f8a; }
+.hud-money { font-weight: bold; color: #a8762c; }
+.hud-money::before { content: '●'; color: #e8b84a; margin-right: 3px; font-size: 0.8em; }
 
 #daynote {
   position: absolute; top: 60px; left: 18px;

@@ -32,6 +32,19 @@ export const FISH = [
   { id: 'medaka', name: 'メダカ', rarity: 2, zone: 'pond', len: '3cm', desc: 'ちいさなちいさな、すいめんのきらめき。' },
 ];
 
+// ラムネの王冠コレクション (だがしやで ラムネをのむ / 道ばたで ひろう)
+// w: でやすさのおもみ。あわせて100
+export const CAPS = [
+  { id: 'cider', name: 'サイダー', color: 0x5ab4e8, w: 26 },
+  { id: 'mikan', name: 'みかん', color: 0xf0913a, w: 20 },
+  { id: 'budo', name: 'ぶどう', color: 0x8a5ac8, w: 15 },
+  { id: 'cola', name: 'コーラ', color: 0x7a4a28, w: 13 },
+  { id: 'melon', name: 'メロン', color: 0x66c95c, w: 10 },
+  { id: 'ichigo', name: 'いちご', color: 0xe85a72, w: 8 },
+  { id: 'olive', name: 'オリーブ', color: 0x8a9a4a, w: 6 },
+  { id: 'kin', name: 'きんの王冠', color: 0xf0c040, w: 2 },
+];
+
 // weather: sunny / cloudy / rain / storm
 export const CALENDAR = [
   null, // day 0 なし

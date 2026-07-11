@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { smat, woodTex, makePerson } from './builders.js';
+import { CAPS } from '../data/data.js';
 
 // おばあちゃんの家のなか。地下 (y=-80) に部屋を置いて、外の世界とは切り離す
 // 1階: 台所 / 茶の間 / おばあちゃんの間 (仏壇) / 玄関 + 階段
@@ -290,6 +291,47 @@ export function buildUpstairs(scene) {
   md(new THREE.BoxGeometry(0.14, 0.1, 2.14), woodDark, 3.84, 2.44, 2.5); // かもい
   md(new THREE.BoxGeometry(0.14, 0.1, 2.14), woodDark, 3.84, 0.06, 2.5); // しきい
 
+  // 王冠のかざりだな (ラムネの王冠コレクションが ならんでいく)
+  md(new THREE.BoxGeometry(2.3, 0.06, 0.28), wood, 1.6, 2.0, -3.9);
+  md(new THREE.BoxGeometry(0.05, 0.16, 0.2), woodDark, 0.6, 1.9, -3.92); // うけ
+  md(new THREE.BoxGeometry(0.05, 0.16, 0.2), woodDark, 2.6, 1.9, -3.92);
+  const capMeshes = [];
+  CAPS.forEach((cp, i) => {
+    const m = md(
+      new THREE.CylinderGeometry(0.1, 0.115, 0.04, 10),
+      smat(cp.color, cp.id === 'kin' ? { emissive: 0x6a5010 } : {}),
+      0.62 + i * 0.27, 2.14, -3.82,
+    );
+    m.rotation.x = -0.4; // かべに たてかけるように かたむける
+    m.visible = false;
+    capMeshes.push(m);
+  });
+  // ダブった王冠は つくえのすみに つみあがる
+  const pileMeshes = [];
+  for (let i = 0; i < 6; i++) {
+    const m = md(
+      new THREE.CylinderGeometry(0.1, 0.115, 0.03, 10),
+      smat(CAPS[(i * 3 + 1) % CAPS.length].color),
+      3.3 + (i % 2) * 0.06 - 0.03, 0.84 + Math.floor(i / 2) * 0.034, -3.05 + (i % 3) * 0.04 - 0.04,
+    );
+    m.visible = false;
+    pileMeshes.push(m);
+  }
+  const capShelf = {
+    refresh(st) {
+      let total = 0;
+      let uniq = 0;
+      CAPS.forEach((cp, i) => {
+        const n = (st.caps && st.caps[cp.id]) || 0;
+        capMeshes[i].visible = n > 0;
+        total += n;
+        if (n > 0) uniq += 1;
+      });
+      const dup = Math.min(pileMeshes.length, total - uniq);
+      pileMeshes.forEach((m, i) => { m.visible = i < dup; });
+    },
+  };
+
   // 窓 (夜空や朝の光がにじむ) とポスター
   md(new THREE.BoxGeometry(2.0, 1.4, 0.08), smat(0xbcd4dc, { emissive: 0x36474f }), -0.5, 2.3, -3.94);
   md(new THREE.BoxGeometry(2.1, 0.12, 0.14), wood, -0.5, 1.55, -3.9);
@@ -328,6 +370,8 @@ export function buildUpstairs(scene) {
       shelf: { x: CX + 3.5, z: 0.4 },
       window: { x: CX - 0.5, z: -2.9 },
       closet: { x: CX + 3.3, z: 2.5 },
+      caps: { x: CX + 1.2, z: -2.7 },
     },
+    capShelf,
   };
 }

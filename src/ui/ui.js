@@ -41,14 +41,15 @@ export class UI {
   }
 
   // ---------- HUD ----------
-  updateHUD(clock) {
+  updateHUD(clock, state) {
     this.els.hud.style.display = 'flex';
     const d = clock.day;
     const cal = calDay(d);
     this.els.hud.innerHTML =
       `<span class="hud-date">8月${d}日 (${youbi(d)})</span>` +
       `<span class="hud-time">${clock.fmt()}</span>` +
-      `<span class="hud-weather">${WEATHER_ICON[clock.weather]} ${clock.yudachi ? 'ゆうだち' : WEATHER_LABEL[clock.weather]}</span>`;
+      `<span class="hud-weather">${WEATHER_ICON[clock.weather]} ${clock.yudachi ? 'ゆうだち' : WEATHER_LABEL[clock.weather]}</span>` +
+      (state ? `<span class="hud-money">${state.money}えん</span>` : '');
     this.els.note.textContent = cal.note || '';
     this.els.note.style.opacity = cal.note && clock.min < 480 ? 1 : 0;
   }

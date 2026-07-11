@@ -228,6 +228,7 @@ async function boot() {
     Object.assign(state, newState());
   }
   await ui.fade(true, 500);
+  if (world.interior2f && world.interior2f.capShelf) world.interior2f.capShelf.refresh(state); // 王冠だなを セーブにあわせる
   player.snapCamera();
   started = true;
   document.body.classList.add('started'); // ポーズボタンを表示
@@ -330,7 +331,7 @@ function frame(forcedDt) {
     ui.toast(m ? 'おと OFF' : 'おと ON');
   }
 
-  if (started) ui.updateHUD(gameClock);
+  if (started) ui.updateHUD(gameClock, state);
 
   audioT -= dt;
   if (audioT <= 0) {
