@@ -355,7 +355,7 @@ boot();
 
 // デバッグ用 (コンソールから時間・日付を動かせる)
 window.__game = {
-  state, player, npcs, bugs, fishing, events, ui, renderer, camera,
+  state, player, npcs, bugs, fishing, events, ui, renderer, camera, effects,
   step: (dt = 0.016) => frame(dt),
   get clock() { return gameClock; },
   // 実機なしで 強制よこ画面を確認するためのフック

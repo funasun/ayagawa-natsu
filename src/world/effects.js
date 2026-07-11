@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { riverCenterZ, waterLevel, groundY } from './world.js';
+import { riverCenterZ, waterLevel, groundY, RIVER_HALF, POND, POND_Y } from './world.js';
 
 // 丸くぼかした光の粒テクスチャ (Pointsが四角く見えるのを防ぐ)
 export function glowDotTex() {
@@ -77,6 +77,71 @@ export class Effects {
     scene.add(rainbowGroup);
     this.rainbowGroup = rainbowGroup;
     this.rainbowFade = 0;
+
+    // 水面のきらめき (ひるまの川と池が 日ざしで キラキラ ひかる)
+    this.sparklePos = () => {
+      if (Math.random() < 0.68) {
+        const x = -140 + Math.random() * 300; // 町のはんいの 川すじ
+        const z = riverCenterZ(x) + (Math.random() - 0.5) * RIVER_HALF * 1.5;
+        return [x, waterLevel(x) + 0.1, z];
+      }
+      const a = Math.random() * Math.PI * 2, rr = Math.sqrt(Math.random()) * (POND.r - 1.5);
+      return [POND.x + Math.cos(a) * rr, POND_Y + 0.1, POND.z + Math.sin(a) * rr];
+    };
+    this.sparkles = [];
+    for (let L = 0; L < 2; L++) {
+      const n = 70;
+      const arr = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) arr.set(this.sparklePos(), i * 3);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+      const p = new THREE.Points(geo, new THREE.PointsMaterial({
+        color: 0xfff6d8, size: 0.55, map: glowDotTex(),
+        transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false,
+      }));
+      p.visible = false;
+      scene.add(p);
+      this.sparkles.push({ pts: p, ph: L * Math.PI * 0.5 });
+    }
+    this.sparkleTimer = 0;
+    this._spWhite = new THREE.Color(0xfff6d8);
+    this._spGold = new THREE.Color(0xffb057);
+
+    // 赤とんぼ (お盆すぎの ゆうがた、たんぼのうえを すいすい とぶ)
+    this.tomboBase = [];
+    const tomboPts = [];
+    const paddies = [[24, 60], [45, 55], [30, 68], [96, 30], [110, 40]];
+    for (let i = 0; i < 16; i++) {
+      const [px, pz] = paddies[i % paddies.length];
+      const cx = px + (Math.random() - 0.5) * 10, cz = pz + (Math.random() - 0.5) * 8;
+      this.tomboBase.push({
+        cx, cz, y: groundY(cx, cz) + 1.5 + Math.random() * 1.5,
+        rx: 2 + Math.random() * 3, rz: 1.5 + Math.random() * 2.5,
+        sp: 0.5 + Math.random() * 0.7, ph: Math.random() * 9,
+      });
+      tomboPts.push(cx, 0, cz);
+    }
+    const tomboGeo = new THREE.BufferGeometry();
+    tomboGeo.setAttribute('position', new THREE.Float32BufferAttribute(tomboPts, 3));
+    this.tombo = new THREE.Points(tomboGeo, new THREE.PointsMaterial({ color: 0xe8542a, size: 0.52, transparent: true, opacity: 0.95 }));
+    this.tombo.visible = false;
+    scene.add(this.tombo);
+
+    // ひこうき雲 (ひるさがり、みなみの山なみの うえを しずかに よこぎる)
+    // ※カメラは 見上げられないので、みえる帯 (地平線から +8度) にあわせた低めの空をとぶ
+    this.plane = new THREE.Mesh(
+      new THREE.SphereGeometry(1.5, 6, 5),
+      new THREE.MeshBasicMaterial({ color: 0xf2f5f8, fog: false }),
+    );
+    this.contrail = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.4, 0.7, 1, 6, 1, true), // 機体がわ(+x)が ほそく、うしろが ふわっと ひろがる
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.62, fog: false, depthWrite: false }),
+    );
+    this.contrail.rotation.z = Math.PI / 2; // x方向に ながく のびる
+    this.plane.visible = this.contrail.visible = false;
+    scene.add(this.plane, this.contrail);
+    this.planeT = -1; // -1: 休み / 0..: 飛行ちゅうの経過秒
+    this.planeDay = 0;
 
     // 花火
     this.bursts = [];
@@ -231,6 +296,86 @@ export class Effects {
     if (this.world.riverWaterMat) {
       const h = 0.55 + Math.sin(this.t * 0.8) * 0.015;
       this.world.riverWaterMat.color.setHSL(0.55, 0.5, min >= 1150 ? 0.22 : h * 0.9);
+    }
+
+    // 水面のきらめき (ひる強く、ゆうがたは 金色に。くもり・雨・夜は しずか)
+    const tSun = THREE.MathUtils.clamp((min - 350) / (1160 - 350), 0, 1);
+    const sunUp = Math.max(0, Math.sin(tSun * Math.PI));
+    const warmT = THREE.MathUtils.clamp(1 - Math.abs(tSun - 0.9) * 4.5, 0, 1);
+    const wf = weather === 'sunny' ? 1 : weather === 'cloudy' ? 0.3 : 0;
+    const sBase = this.world.indoor ? 0 : sunUp * wf;
+    this.sparkleTimer -= dt;
+    const resample = this.sparkleTimer <= 0;
+    if (resample) this.sparkleTimer = 0.24;
+    for (const s of this.sparkles) {
+      s.pts.visible = sBase > 0.03;
+      if (!s.pts.visible) continue;
+      s.pts.material.opacity = sBase * (0.3 + 0.7 * Math.abs(Math.sin(this.t * 2.1 + s.ph)));
+      s.pts.material.color.copy(this._spWhite).lerp(this._spGold, warmT * 0.85);
+      if (resample) {
+        // 数こずつ 場所を いれかえて、日ざしの チラチラを つくる
+        const arr = s.pts.geometry.attributes.position.array;
+        for (let k = 0; k < 5; k++) {
+          const i = Math.floor(Math.random() * (arr.length / 3));
+          arr.set(this.sparklePos(), i * 3);
+        }
+        s.pts.geometry.attributes.position.needsUpdate = true;
+      }
+    }
+
+    // 赤とんぼ (8/13すぎ、はれた ゆうがた 16:00-19:00 に たんぼのうえ)
+    const tomboOn = this.clock.day >= 13 && min >= 960 && min <= 1140 &&
+      (weather === 'sunny' || weather === 'cloudy') && !this.world.indoor;
+    this.tombo.visible = tomboOn;
+    if (tomboOn) {
+      const arr = this.tombo.geometry.attributes.position.array;
+      for (let i = 0; i < this.tomboBase.length; i++) {
+        const b = this.tomboBase[i];
+        const a = this.t * b.sp + b.ph;
+        arr[i * 3] = b.cx + Math.cos(a) * b.rx;
+        arr[i * 3 + 1] = b.y + Math.sin(a * 2.3) * 0.4;
+        arr[i * 3 + 2] = b.cz + Math.sin(a) * b.rz;
+      }
+      this.tombo.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // ひこうき雲 (はれた日の ひるさがり、1日1回 たかい空を しずかに よこぎる)
+    if (this.planeT < 0 && this.planeDay !== this.clock.day && weather === 'sunny') {
+      const target = 620 + (this.clock.day * 97) % 260; // 10:20〜14:40 の どこか (日ごとに ちがう)
+      if (min >= target && min <= target + 40) {
+        this.planeDay = this.clock.day;
+        this.planeT = 0;
+        this.contrail.material.opacity = 0.62;
+      }
+    }
+    if (this.planeT >= 0) {
+      this.planeT += dt;
+      const px = -240 + this.planeT * 11; // 約44秒で 里山の空を よこぎる
+      const py = 12 + this.planeT * 0.09; // すこしずつ のぼっていく (とおくの山の 中腹の たかさ = 画面のみえる帯)
+      const pz = -110;
+      const show = !this.world.indoor;
+      if (px <= 245) {
+        this.plane.position.set(px, py, pz);
+        this.plane.visible = show;
+        // 雲は 機体の すこし うしろから、70くらいの ながさで たなびく
+        const tail = px - 2.2;
+        const head = Math.max(-238, tail - 70);
+        const len = tail - head;
+        if (len > 1) {
+          this.contrail.scale.set(1, len, 1);
+          this.contrail.position.set((head + tail) / 2, py - (px - (head + tail) / 2) * 0.09 / 11, pz);
+          this.contrail.visible = show;
+        }
+      } else {
+        // わたりおわったら、雲だけ ゆっくり きえていく
+        this.plane.visible = false;
+        this.contrail.visible = show;
+        this.contrail.material.opacity -= dt * 0.12;
+        if (this.contrail.material.opacity <= 0.02) {
+          this.contrail.visible = false;
+          this.planeT = -1;
+        }
+      }
     }
   }
 }
