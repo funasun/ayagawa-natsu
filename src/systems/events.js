@@ -1,5 +1,6 @@
 import { logEvent, capCount, bugCount, fishCount } from '../core/state.js';
 import { phaseOf, youbi, TIME_SCALE, CAPS } from '../data/data.js';
+import { TAKIBO } from '../world/world.js';
 
 // 王冠ガチャ (でやすさのおもみつき)
 function pickCap() {
@@ -393,6 +394,39 @@ export class EventSystem {
 
     // 家にはいる (陶のおばあちゃんち。玄関はカメラのある南東がわ)
     list.push({ x: 118, z: 16.1, r: 2.4, label: 'いえにはいる', action: () => this.enterHouse() });
+
+    // ふうりん (えんがわの のきさき。ちりんと ならせる)
+    list.push({
+      x: 115.4, z: 15.6, r: 1.7, label: 'ふうりんを ならす',
+      action: () => {
+        this.audio.sfx('suzu');
+        this.furinT = 1.8;
+        if (!s.flags['furin' + c.day]) {
+          s.flags['furin' + c.day] = true;
+          this.ui.toast('ちりん…。なつの おとが した');
+          logEvent(s, 'えんがわのふうりんをならした');
+        }
+      },
+    });
+
+    // つつみやま さんちょう (見晴らし岩)
+    if (this.world.summit) {
+      list.push({ x: this.world.summit.x, z: this.world.summit.z, r: 2.8, label: 'まちを ながめる', action: () => this.summitView() });
+    }
+
+    // あゆのつかみどり (滝つぼ。ちかくの あゆに とびつく)
+    if (this.ayuState && this.player) {
+      const pp = this.player.pos;
+      let best = null, bd = 1e9;
+      for (const f of this.ayuState.fish) {
+        if (!f.alive) continue;
+        const d = Math.hypot(pp.x - f.x, pp.z - f.z);
+        if (d < bd) { bd = d; best = f; }
+      }
+      if (best && bd < 1.5) {
+        list.push({ x: best.x, z: best.z, r: 1.6, label: 'あゆに とびつく!', action: () => this.grabAyu(best) });
+      }
+    }
 
     // ラジオ体操 (6:00-7:00 神社ひろば)
     if (c.min <= 420 && !s.flags['taiso' + c.day]) {
@@ -1390,6 +1424,134 @@ export class EventSystem {
     }
   }
 
+  // ---- あゆのつかみどり (堤山の滝つぼ。にげまわる あゆを おいつめて とびつく) ----
+  updateAyu(dt, player) {
+    const w = this.world;
+    if (!w.ayu || !player) return;
+    const day = this.clock.day;
+    if (!this.ayuState || this.ayuState.day !== day) {
+      this.ayuState = {
+        day,
+        fish: [0, 1, 2].map((i) => ({
+          x: TAKIBO.x + Math.cos(i * 2.1 + day) * 1.8,
+          z: TAKIBO.z + Math.sin(i * 2.1 + day) * 1.8,
+          a: i * 2.1, panic: 0, alive: true,
+        })),
+      };
+    }
+    const st = this.ayuState;
+    const p = player.pos;
+    const near = !w.indoor && Math.hypot(p.x - TAKIBO.x, p.z - TAKIBO.z) < 55;
+    const t = this.evT || 0;
+    st.fish.forEach((f, i) => {
+      const m = w.ayu[i];
+      const show = near && f.alive;
+      if (m.visible !== show) m.visible = show;
+      if (!show) return;
+      const dp = Math.hypot(p.x - f.x, p.z - f.z);
+      if (dp < 3.4) {
+        if (f.panic < 0.2 && dp < 2.6 && t - (this.ayuSfxT || 0) > 1.4) { this.audio.sfx('splash'); this.ayuSfxT = t; }
+        f.panic = Math.min(1.5, f.panic + dt * 6);
+      }
+      f.panic = Math.max(0, f.panic - dt * 0.8);
+      if (f.panic > 0.2) {
+        const away = Math.atan2(f.z - p.z, f.x - p.x) + Math.sin(t * 4 + i * 7) * 0.55;
+        let da = away - f.a;
+        da = Math.atan2(Math.sin(da), Math.cos(da));
+        f.a += da * Math.min(1, dt * 8);
+      } else {
+        f.a += Math.sin(t * 0.6 + i * 5.3) * dt * 1.3;
+      }
+      // ふちの そとには でない
+      const dc = Math.hypot(f.x - TAKIBO.x, f.z - TAKIBO.z);
+      if (dc > TAKIBO.r - 1.0) {
+        const back = Math.atan2(TAKIBO.z - f.z, TAKIBO.x - f.x);
+        let da = back - f.a;
+        da = Math.atan2(Math.sin(da), Math.cos(da));
+        f.a += da * Math.min(1, dt * (f.panic > 0.2 ? 4 : 2.2));
+      }
+      const sp = f.panic > 0.2 ? 3.1 : 0.75;
+      f.x += Math.cos(f.a) * sp * dt;
+      f.z += Math.sin(f.a) * sp * dt;
+      const dc2 = Math.hypot(f.x - TAKIBO.x, f.z - TAKIBO.z);
+      if (dc2 > TAKIBO.r - 0.45) {
+        f.x = TAKIBO.x + ((f.x - TAKIBO.x) * (TAKIBO.r - 0.45)) / dc2;
+        f.z = TAKIBO.z + ((f.z - TAKIBO.z) * (TAKIBO.r - 0.45)) / dc2;
+      }
+      m.position.set(f.x, TAKIBO.y - 0.08 + Math.sin(t * 3 + i) * 0.02, f.z);
+      m.rotation.y = -f.a;
+      m.rotation.z = Math.sin(t * (f.panic > 0.2 ? 14 : 6) + i) * 0.16;
+    });
+  }
+
+  async grabAyu(f) {
+    const s = this.state;
+    const p = this.player.pos;
+    const inWater = Math.hypot(p.x - TAKIBO.x, p.z - TAKIBO.z) < TAKIBO.r;
+    const dc = Math.hypot(f.x - TAKIBO.x, f.z - TAKIBO.z);
+    const cornered = dc > TAKIBO.r - 1.7; // ふちに おいつめた
+    const calm = f.panic < 0.35; // ゆだんしている
+    const chance = 0.42 + (cornered ? 0.28 : 0) + (calm ? 0.18 : 0) + (inWater ? 0.06 : -0.12);
+    if (Math.random() < chance) {
+      f.alive = false;
+      const first = !s.fish.ayu;
+      s.fish.ayu = (s.fish.ayu || 0) + 1;
+      this.audio.sfx('catch');
+      this.ui.toast(`アユ (17cm) を てづかみで つかまえた!${first ? ' 【ずかんに とうろく!】' : ''}`, 'gold');
+      logEvent(s, 'たきつぼでアユをつかみどりした');
+      if (first) {
+        s.flags.ayuFirst = true;
+        await this.ui.showStory([
+          'つめたい! ぬるぬるして、ちからづよい!<br><br>りょうてのなかで、アユが ぴちぴち はねとる。<br>かわの、きゅうりみたいな においが した。',
+          'ばあちゃんに もって かえろう。<br>しおやきに してもらうんじゃ!<br><br>ゆうごはんが たのしみに なってきた。',
+        ]);
+      }
+      if (!this.ayuState.fish.some((x) => x.alive)) {
+        this.ui.toast('きょうの あゆは でつくしたみたい。また あした!');
+      }
+    } else {
+      f.panic = 1.6;
+      this.audio.sfx('splash');
+      this.ui.toast('するり! にげられた…');
+    }
+  }
+
+  // ---- つつみやま さんちょうの ながめ ----
+  async summitView() {
+    const s = this.state;
+    const c = this.clock;
+    const phase = phaseOf(c.min);
+    await this.ui.fadePulse();
+    if (!s.flags.tsutsumiTop) {
+      s.flags.tsutsumiTop = true;
+      await this.ui.showStory([
+        'のぼった…! つつみやまの さんちょうじゃ!<br><br>かぜが ごうっと ふきぬけて、<br>せなかの あせが、すうっと ひいていく。',
+        'あやがわの まちが ぜんぶ みえる。<br>ばあちゃんの いえ。てんまんぐう。ことでんの せんろ。<br><br>かわが、ぎんいろの リボンみたいに ひかっとる。',
+      ]);
+      this.ui.toast('【とっておきの けしき】つつみやまに のぼった!', 'gold');
+      logEvent(s, 'つつみやまのさんちょうにはじめてのぼった');
+    } else if (phase === 'evening') {
+      await this.ui.showStory([
+        'ゆうやけが、まち ぜんたいを あかく そめとる。<br><br>いえいえの まどが、ぽつ、ぽつ、と ひかりだす。<br>どこかで ひぐらしが ないとる。',
+      ]);
+      logEvent(s, 'つつみやまからゆうやけをみた');
+      this.ui.toast('【とっておきの けしき】やまの ゆうやけ', 'gold');
+    } else if (phase === 'night') {
+      await this.ui.showStory([
+        'よるの まちは しずかで、ほしが ちかい。<br><br>したから かえるの こえが きこえてくる。<br>やまの よるは、ちょっと どきどきする。',
+      ]);
+      logEvent(s, 'よるのつつみやまにのぼった');
+    } else {
+      const views = [
+        'ことでんが おもちゃみたいに はしっとる! ばあちゃんの いえも みえるぞ',
+        'とおくの おむすびがたの やまは さぬきふじ。きょうも ええ てんきじゃ',
+        'たきつぼが きらっと ひかった。あゆ、おるかなあ',
+      ];
+      this.ui.toast(views[c.day % views.length]);
+      logEvent(s, 'つつみやまからまちをながめた');
+    }
+  }
+
   // ---- 用水路の ザリガニ ----
   async zariganiPeek() {
     const s = this.state;
@@ -1648,6 +1810,18 @@ export class EventSystem {
         mark.position.set(spot.x, this.world.groundY(spot.x, spot.z) + 0.1, spot.z);
         mark.rotation.y += dt * 2.2;
       }
+    }
+    // 生活のこまごま (あゆ・せんたくもの・ふうりん)
+    this.evT = (this.evT || 0) + dt;
+    this.updateAyu(dt, player);
+    if (this.world.laundry) {
+      const wet = this.clock.weather === 'rain' || this.clock.weather === 'storm';
+      const on = !wet && this.clock.min >= 480 && this.clock.min <= 1020;
+      for (const l of this.world.laundry) if (l.visible !== on) l.visible = on;
+    }
+    if (this.world.furin) {
+      this.furinT = Math.max(0, (this.furinT || 0) - dt);
+      this.world.furin.rotation.x = Math.sin(this.evT * 2.7) * (0.05 + this.furinT * 0.2);
     }
     // ことでん乗車中: 車窓を流し、駅アナウンスを出し、時間どおりに到着する
     if (this.ride) {

@@ -183,6 +183,11 @@ export class Effects {
     // 川の流れ
     const wm = this.world.riverWaterMat;
     if (wm && wm.map) wm.map.offset.y -= dt * 0.08;
+    // 滝と沢の ながれ (はやい)
+    if (this.world.fallMat && this.world.fallMat.map) this.world.fallMat.map.offset.y -= dt * 0.6;
+    if (this.world.sawaMats) for (const sm of this.world.sawaMats) { if (sm.map) sm.map.offset.y -= dt * 0.3; }
+    // 滝しぶきの あわが ゆらめく
+    if (this.world.foamMat) this.world.foamMat.opacity = 0.5 + Math.sin(this.t * 5.2) * 0.14;
 
     // 雨
     const raining = weather === 'rain' || weather === 'storm';

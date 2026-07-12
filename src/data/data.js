@@ -30,6 +30,7 @@ export const FISH = [
   { id: 'bass', name: 'ブラックバス', rarity: 2, zone: 'pond', len: '35cm', desc: 'ため池のあばれんぼう。ひきがつよい!' },
   { id: 'bluegill', name: 'ブルーギル', rarity: 1, zone: 'pond', len: '15cm', desc: 'ため池ならどこにでもいる、げんきなやつ。' },
   { id: 'medaka', name: 'メダカ', rarity: 2, zone: 'pond', len: '3cm', desc: 'ちいさなちいさな、すいめんのきらめき。' },
+  { id: 'ayu', name: 'アユ', rarity: 3, zone: 'sawa', len: '17cm', desc: 'つつみやまの たきつぼのぬし。てづかみでしか つかまえられん。しおやきは さいこう!' },
 ];
 
 // ラムネの王冠コレクション (だがしやで ラムネをのむ / 道ばたで ひろう)

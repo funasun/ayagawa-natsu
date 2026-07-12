@@ -219,18 +219,22 @@ export class UI {
     const cv = this.els.map.querySelector('canvas');
     const ctx = cv.getContext('2d');
     const W = cv.width, H = cv.height;
-    // 世界座標 (x: -232..232 / z: -148..148) → 画面 (右=+x, 上=-z)
+    // 世界座標 (x: -232..232 / z: -212..148) → 画面 (右=+x, 上=-z)
     const px = (x) => ((x + 232) / 464) * (W - 60) + 30;
-    const py = (z) => ((z + 148) / 296) * (H - 60) + 30;
+    const py = (z) => ((z + 212) / 360) * (H - 60) + 30;
 
     // 紙のじめん
     ctx.fillStyle = '#eee5c8';
     ctx.fillRect(0, 0, W, H);
-    // 山のみどり (西のやまぎわ・綾上の丘・十瓶山・高鉢山)
+    // 山のみどり (西のやまぎわ・綾上の丘・堤山と南のやまなみ・十瓶山)
     ctx.fillStyle = '#cfe0ae';
     const hill = (x, z, r) => { ctx.beginPath(); ctx.arc(px(x), py(z), r, 0, 7); ctx.fill(); };
-    hill(-130, -118, 52); hill(-200, -120, 70); hill(-60, -165, 60); hill(60, -130, 46); hill(150, -110, 55);
+    hill(-140, -152, 52); hill(-200, -130, 70); hill(-60, -165, 62); hill(62, -154, 48); hill(155, -147, 50);
     hill(TOBIN.x, TOBIN.z, 40); hill(-210, -40, 46); hill(-232, 40, 40); hill(210, 110, 44);
+    // 堤山のさんちょう (こいみどり)
+    ctx.fillStyle = '#b8d194';
+    hill(-60, -165, 34);
+    ctx.fillStyle = '#cfe0ae';
 
     // 田んぼ (滝宮・陶・棚田)
     ctx.fillStyle = '#d9e6a8';
@@ -288,6 +292,8 @@ export class UI {
       [160, 61, '🌄', 'みはらしだい'],
       [21, 31, '🌻', 'ひまわり'],
       [-70, 42, '', 'こんぴらかいどう'],
+      [-60, -168, '⛰', 'つつみやま'],
+      [-33, -129, '', 'たきつぼ'],
     ];
     ctx.textAlign = 'center';
     for (const [x, z, icon, label] of marks) {
