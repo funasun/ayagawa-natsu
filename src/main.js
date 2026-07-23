@@ -168,6 +168,32 @@ events.player = player; // update() 前に warpTo (オープニング) が走っ
 let started = false;
 let sleeping = false;
 
+// --- 途中セーブ (どこでやめても つづきから) ---
+// state._resume に「いる ばしょ・向き・サブエリア」を書きこむ。時刻(min)や
+// 所持金・図鑑は state 本体が つねに最新なので、それごと保存すれば まるごと復元できる。
+let canSave = false; // オープニングが おわってから ほんセーブ (作りかけの状態を保存しない)
+let saveT = 0;
+function currentSubId() {
+  const sub = world.sub;
+  if (!sub) return 'field';
+  if (sub === world.interior) return 'interior';
+  if (sub === world.interior2f) return 'interior2f';
+  if (sub === world.takamatsu) return 'takamatsu';
+  if (sub === world.trainRide) return 'trainRide';
+  return 'field';
+}
+function writeSave() {
+  state._resume = { sub: currentSubId(), x: player.pos.x, z: player.pos.z, h: player.heading };
+  saveState(state);
+}
+function autosave() {
+  if (!canSave || !started || sleeping) return;
+  writeSave();
+}
+// タブを閉じる・ほかのアプリに切りかえる ときにも とりこぼさず保存
+document.addEventListener('visibilitychange', () => { if (document.hidden) autosave(); });
+window.addEventListener('pagehide', autosave);
+
 async function sleep(auto) {
   if (sleeping || !started) return;
   sleeping = true;
@@ -199,7 +225,7 @@ async function sleep(auto) {
   player.heading = Math.PI / 2;
   player.mesh.rotation.y = Math.PI / 2;
   player.snapCamera();
-  saveState(state);
+  writeSave(); // 2階のふとんの上で保存 → つづきは あさ、じぶんのへやから
   await new Promise((r) => setTimeout(r, 300));
   // さいごの朝だけ、目がさめる前にひとことだけモノローグ
   if (state.day === 31) {
@@ -231,6 +257,7 @@ async function boot() {
   } else {
     clearSave();
     Object.assign(state, newState());
+    delete state._resume; // はじめから: 前の続きの ばしょを のこさない
   }
   await ui.fade(true, 500);
   if (world.interior2f && world.interior2f.capShelf) world.interior2f.capShelf.refresh(state); // 王冠だなを セーブにあわせる
@@ -241,9 +268,21 @@ async function boot() {
     // はじめて: オープニング (モノローグ → ことでん車内 → 陶駅でおばあちゃんの出迎え)
     await events.opening();
   } else {
-    await ui.fade(false, 1000);
+    // つづきから: 保存しておいた ばしょ・向き・サブエリアに もどす
+    const r = state._resume;
+    const subMap = { interior: world.interior, interior2f: world.interior2f, takamatsu: world.takamatsu };
+    if (r && r.sub && r.sub in subMap) {
+      await events.warpTo(subMap[r.sub], r.x, r.z, r.h ?? Math.PI, 900);
+    } else if (r && r.sub === 'field') {
+      await events.warpTo(null, r.x, r.z, r.h ?? Math.PI, 900);
+    } else {
+      // 古いセーブ / 電車の中だった → おばあちゃんの家のまえ にもどす
+      await events.warpTo(null, 114, 17, Math.PI, 900);
+    }
     ui.toast(`8月${state.day}日 ― つづきから`);
   }
+  canSave = true;
+  writeSave(); // ここで1回 保存 → このあと すぐ閉じても「つづきから」が出る
   // タッチ操作の ひとには、はじめの1回だけ ボタンの ばしょを ひからせて おしえる
   if (ui.touchUI && !state.flags.touchTut) {
     state.flags.touchTut = true;
@@ -275,7 +314,11 @@ function frame(forcedDt) {
   const frozen = !started || modal || fishing.active || sleeping;
   document.body.classList.toggle('modal', !!(modal || sleeping));
 
-  if (started && !modal && !sleeping) gameClock.tick(dt);
+  if (started && !modal && !sleeping) {
+    gameClock.tick(dt);
+    saveT += dt; // 12秒 (ゲーム内では 数十分) ごとに 静かにオートセーブ
+    if (saveT >= 12) { saveT = 0; autosave(); }
+  }
 
   sky.update(gameClock, player.pos, dt);
   effects.update(dt, player.pos);
