@@ -181,9 +181,9 @@ body.modal #pause-toggle { display: none; }
   transition: background-color 4s linear;
 }
 #grade::before {
-  /* 彩度をすこし おとして、フィルムの 褪せた色に */
+  /* 彩度をほんの少し おとして、フィルムの 褪せた色に (退色は postfx が主役) */
   content: ''; position: absolute; inset: 0;
-  background: rgba(125, 125, 125, 0.16);
+  background: rgba(125, 125, 125, 0.07);
   mix-blend-mode: saturation;
 }
 
@@ -193,8 +193,9 @@ body.modal #pause-toggle { display: none; }
   position: fixed; inset: 0; pointer-events: none; z-index: 5;
 }
 #filter::before {
+  /* ビネットは postfx がもつ。ここは ごく わずかな 暖色の おとしこみ だけ (四隅がわずかに締まる程度) */
   content: ''; position: absolute; inset: 0;
-  background: radial-gradient(ellipse at center, transparent 62%, rgba(30, 18, 8, 0.14) 100%);
+  background: radial-gradient(ellipse at center, transparent 76%, rgba(40, 26, 12, 0.05) 100%);
 }
 #filter::after {
   content: ''; position: absolute; inset: 0;

@@ -64,6 +64,7 @@ const COMP_FRAG = `
   uniform float uGrain;
   uniform float uSat;
   uniform float uWarm;    // 夕方など、暖色に よせる量 (0..1)
+  uniform float uDay;     // 昼らしさ (1=昼, 0=夜)。夜は 暖色かぶり/持ち上げを 弱めて 青い夜を まもる
   uniform float uTime;
   uniform vec2  uRes;
   varying vec2 vUv;
@@ -85,20 +86,22 @@ const COMP_FRAG = `
 
     // 露出
     col *= uExposure;
+    // 夏の日ざしの あたたかい色かぶり (昼は ほんのり 金色。夜は かけない = 青い夜をまもる)
+    col *= mix(vec3(1.0), vec3(1.045, 1.005, 0.945), uDay);
     float l = dot(col, vec3(0.299, 0.587, 0.114));
 
     // ② フィルム・グレード ---------------------------------
-    // かげを 褪せた 暖色に もちあげる (黒を しめきらない = 古い写真の 味)
-    col += vec3(0.055, 0.030, 0.014) * uLift * (1.0 - smoothstep(0.0, 0.5, l));
-    // ひかりは 金いろに
-    col *= mix(vec3(1.0), vec3(1.05, 1.01, 0.92), smoothstep(0.35, 1.0, l));
-    // ゆるい S字コントラスト (黒は しめきらないよう 中心を もちあげぎみに)
+    // かげを 褪せた 暖色に もちあげる (黒を しめきらない = 古い写真の ミルキーな味)。夜は 弱める
+    col += vec3(0.075, 0.046, 0.024) * uLift * uDay * (1.0 - smoothstep(0.0, 0.62, l));
+    // ひかりは 金いろに にじませる
+    col *= mix(vec3(1.0), vec3(1.06, 1.02, 0.92), smoothstep(0.35, 1.0, l));
+    // ごく ゆるい S字コントラスト (褪せた 写真の 低コントラスト)
     vec3 s = col * col * (3.0 - 2.0 * col);
     col = mix(col, s, uContrast);
-    // 彩度: すこし ゆたかに (夏の みどり)
+    // 彩度: すこし 褪せさせる (夏の 白っぽい みどり)
     col = sat(col, uSat);
-    // 深い かげに ほんのり 青 (奥ゆき)
-    col = mix(col, col * vec3(0.95, 0.99, 1.05), (1.0 - smoothstep(0.0, 0.32, l)) * 0.18);
+    // 深い かげに ほんのり 青 (奥ゆき) — でも 暖色を のこすため ひかえめに
+    col = mix(col, col * vec3(0.96, 0.99, 1.04), (1.0 - smoothstep(0.0, 0.30, l)) * 0.10);
     // 夕方は 画面全体を さらに 茜へ
     col *= mix(vec3(1.0), vec3(1.09, 0.98, 0.86), uWarm);
 
@@ -106,7 +109,7 @@ const COMP_FRAG = `
     vec2 q = vUv - 0.5;
     q.x *= uRes.x / uRes.y;      // 画面比を 補正して まるい ビネットに
     float r = length(q);
-    float vig = 1.0 - smoothstep(0.42, 1.05, r) * uVignette;
+    float vig = 1.0 - smoothstep(0.58, 1.18, r) * uVignette;
     col *= vig;
     col = mix(col, col * uVigCol, (1.0 - vig) * 0.5);
 
@@ -173,15 +176,16 @@ export class PostFX {
       uniforms: {
         tScene: { value: null },
         tBloom: { value: null },
-        uBloom: { value: 0.75 },
-        uExposure: { value: 1.08 },
-        uLift: { value: 1.0 },
-        uContrast: { value: 0.09 },
-        uVignette: { value: 0.30 },
-        uVigCol: { value: new THREE.Color(0xffcf94) },
-        uGrain: { value: 0.035 },
-        uSat: { value: 1.07 },
+        uBloom: { value: 1.0 },
+        uExposure: { value: 1.16 },
+        uLift: { value: 1.7 },
+        uContrast: { value: 0.03 },
+        uVignette: { value: 0.09 },
+        uVigCol: { value: new THREE.Color(0xffe0b0) },
+        uGrain: { value: 0.03 },
+        uSat: { value: 0.94 },
         uWarm: { value: 0.0 },
+        uDay: { value: 1.0 },
         uTime: { value: 0 },
         uRes: { value: this._res.clone() },
       },
@@ -208,6 +212,8 @@ export class PostFX {
 
   // 夕方の暖色よせ量を そとから わたす (0..1)
   setWarm(v) { this.compMat.uniforms.uWarm.value = v; }
+  // 昼らしさ (1=昼, 0=夜)。夜は ミルキー持ち上げ/暖色かぶりを 弱める
+  setDay(v) { this.compMat.uniforms.uDay.value = v; }
 
   render(scene, camera, time) {
     const r = this.renderer;

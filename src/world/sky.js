@@ -167,10 +167,12 @@ export class Sky {
     const warmMorning = THREE.MathUtils.clamp(1 - Math.abs(t - 0.05) * 8, 0, 1) * 0.7;
     const w2 = Math.max(warm, warmMorning);
 
-    // 夕方は とおくの山なみが 茜色に とけて 霞む
-    this.scene.fog.color.copy(horizon);
-    this.scene.fog.near = weather === 'storm' ? 40 : weather === 'rain' ? 65 : 110 - w2 * 45;
-    this.scene.fog.far = weather === 'storm' ? 180 : weather === 'rain' ? 240 : 380 - w2 * 90;
+    // 夏の日中は とおくの山なみが 白く あたたかく 霞む (真夏の 遠景の ノスタルジー)。
+    // 夕方は 茜色に とけて 霞む。
+    const dayHaze = sunDay * (weather === 'sunny' ? 1 : weather === 'cloudy' ? 0.55 : weather === 'rain' ? 0.2 : 0.1);
+    this.scene.fog.color.copy(horizon).lerp(new THREE.Color(0xf4ecd8), dayHaze * 0.5);
+    this.scene.fog.near = (weather === 'storm' ? 40 : weather === 'rain' ? 65 : 110 - w2 * 45) - dayHaze * 12;
+    this.scene.fog.far = (weather === 'storm' ? 180 : weather === 'rain' ? 240 : 380 - w2 * 90) - dayHaze * 70;
 
     // 太陽 6:00東 → 19:00西。夕方と朝は 低い光で 影が ながく のびる
     const az = Math.PI * (1 - t);
