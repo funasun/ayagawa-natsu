@@ -23,6 +23,11 @@ export class Player {
     this.lookUpT = 0;
     // カメラの向き (0 = 南から北をみる)。ドラッグや Q/R キーで 360度まわせる
     this.camYaw = 0;
+    // 僕夏ふうの「低く・寄った・見下ろしすぎない」追従カメラ。
+    // 遠くまで一望する箱庭ではなく、その場に立っている ような ちかい目線に。
+    this.camDist = 9.3;  // うしろへの きょり
+    this.camHigh = 4.1;  // 少年の あたまより すこし上 (低め = より一人称にちかい目線)
+    this.camLook = 2.3;  // みつめる高さ (胸〜あたま あたり)
     this.snapCamera();
   }
 
@@ -39,10 +44,10 @@ export class Player {
   snapCamera() {
     if (this.world.indoor) this.camYaw = 0; // 屋内は 正面すえおき
     const y = this.camYaw;
-    this.camPos.copy(this.pos).add(new THREE.Vector3(13 * Math.sin(y), 6.8, 13 * Math.cos(y)));
+    this.camPos.copy(this.pos).add(new THREE.Vector3(this.camDist * Math.sin(y), this.camHigh, this.camDist * Math.cos(y)));
     this.clampCamY(this.camPos);
     this.camera.position.copy(this.camPos);
-    this.camera.lookAt(this.pos.x, this.pos.y + 2.8, this.pos.z);
+    this.camera.lookAt(this.pos.x, this.pos.y + this.camLook, this.pos.z);
   }
 
   update(dt, frozen, festivalOn, lookUp) {
@@ -114,14 +119,14 @@ export class Player {
     this.lookUpT += (wantUp - this.lookUpT) * Math.min(1, dt * 1.4);
     const up = this.lookUpT;
     const desired = new THREE.Vector3(
-      this.pos.x + 13 * sy,
-      this.pos.y + 6.8 - up * 2.8,
-      this.pos.z + 13 * cy,
+      this.pos.x + this.camDist * sy,
+      this.pos.y + this.camHigh - up * 2.8,
+      this.pos.z + this.camDist * cy,
     );
     this.clampCamY(desired);
     this.camPos.lerp(desired, Math.min(1, dt * 4.5));
     this.camera.position.copy(this.camPos);
-    this.camera.lookAt(this.pos.x, this.pos.y + 2.8 + up * 12, this.pos.z);
+    this.camera.lookAt(this.pos.x, this.pos.y + this.camLook + up * 12, this.pos.z);
 
     // カメラをふさぐ建物を半透明にする
     if (this.world.updateOcclusion) this.world.updateOcclusion(this.pos, this.camera.position, dt);

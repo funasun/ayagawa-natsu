@@ -33,7 +33,7 @@ document.body.prepend(renderer.domElement);
 const post = new PostFX(renderer, { samples: isCoarse ? 2 : 4 });
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 600);
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 600);
 
 // --- 画面の向き: スマホが たてむきのまま 5秒たったら、ステージを90°回して強制よこ画面 ---
 let forcedLandscape = false;
