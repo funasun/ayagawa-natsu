@@ -4,6 +4,7 @@ import { GameClock } from './core/clock.js';
 import { buildWorld } from './world/world.js';
 import { Sky } from './world/sky.js';
 import { Effects } from './world/effects.js';
+import { PostFX } from './world/postfx.js';
 import { Input } from './systems/input.js';
 import { TouchControls } from './systems/touch.js';
 import { Player } from './systems/player.js';
@@ -28,6 +29,9 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.2;
 document.body.prepend(renderer.domElement);
 
+// ぼくのなつやすみ風の画づくり (ブルーム + フィルムグレード + ビネット + 粒子)
+const post = new PostFX(renderer, { samples: isCoarse ? 2 : 4 });
+
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 600);
 
@@ -41,6 +45,7 @@ function applyViewport() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
+  post.setSize();
 }
 const coarsePointer = matchMedia('(pointer: coarse)');
 let forceTimer = null;
@@ -347,7 +352,15 @@ function frame(forcedDt) {
   }
 
   input.endFrame();
-  renderer.render(scene, camera);
+
+  // 夕方(16:20〜19:00)と朝やけは、画面全体を さらに 茜色へ よせる
+  const mm = state.min;
+  let warm = 0;
+  if (mm >= 980 && mm <= 1140) warm = Math.max(0, 1 - Math.abs(mm - 1070) / 90) * 0.55;
+  else if (mm >= 350 && mm <= 440) warm = Math.max(0, 1 - Math.abs(mm - 395) / 45) * 0.28;
+  const rainy = gameClock.weather === 'rain' || gameClock.weather === 'storm';
+  post.setWarm(warm * (rainy ? 0.4 : 1));
+  post.render(scene, camera, performance.now() * 0.001);
 }
 
 renderer.setAnimationLoop(() => frame());
@@ -356,7 +369,7 @@ boot();
 
 // デバッグ用 (コンソールから時間・日付を動かせる)
 window.__game = {
-  state, player, npcs, bugs, fishing, events, ui, renderer, camera, effects,
+  state, player, npcs, bugs, fishing, events, ui, renderer, camera, effects, post,
   step: (dt = 0.016) => frame(dt),
   get clock() { return gameClock; },
   // 実機なしで 強制よこ画面を確認するためのフック
