@@ -218,6 +218,7 @@ export function buildWorld(scene) {
   const world = {
     circles: [],
     rects: [],
+    npcColliders: [], // うごく人 (NPC) の当たり判定。NpcSystem が毎フレーム つめなおす
     trees: [],
     grassAreas: [
       { x: 22, z: 27, r: 6 }, { x: 10, z: 10, r: 6 }, { x: 30, z: 44, r: 8 }, { x: -28, z: 42, r: 8 },
@@ -1463,12 +1464,17 @@ export function buildWorld(scene) {
   for (const oc of world.takamatsu.occluders) world.occluders.push(oc);
 
   // ---------- 当たり判定・クエリ ----------
-  world.isBlocked = (x, z, festivalOn = false) => {
+  world.isBlocked = (x, z, festivalOn = false, skipId = null) => {
     if (world.indoor) {
       const b = world.sub.bounds;
       if (x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ) return true;
       for (const r of world.sub.rects) if (Math.abs(x - r.x) < r.hx + 0.35 && Math.abs(z - r.z) < r.hz + 0.35) return true;
       return false;
+    }
+    // うごく人 (NPC) にぶつかる。skipId で 自分の 円は のぞく (自己衝突ふせぎ)
+    for (const a of world.npcColliders) {
+      if (a.id === skipId) continue;
+      if (Math.abs(x - a.x) < a.r && Math.abs(z - a.z) < a.r && Math.hypot(x - a.x, z - a.z) < a.r) return true;
     }
     if (Math.abs(x) > 232 || z > 148 || z < -212) return true; // みなみは山のむこうまで あるける
     const rc = riverCenterZ(x);

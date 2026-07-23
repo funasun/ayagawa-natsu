@@ -230,6 +230,7 @@ export class NpcSystem {
   update(dt, player, prompts) {
     const c = this.ctx();
     this.markerT += dt;
+    this.world.npcColliders.length = 0; // 毎フレーム つめなおす (見えとる人だけ)
     let markerNpc = null;
     let nearest = null, nearestD = 1e9;
     for (const npc of this.npcs) {
@@ -269,7 +270,7 @@ export class NpcSystem {
           if (td > 0.2) {
             const sp = 1.6 * dt;
             const nx = mp.x + (tx / td) * sp, nz = mp.z + (tz / td) * sp;
-            if (!this.world.isBlocked(nx, nz)) { mp.x = nx; mp.z = nz; }
+            if (!this.world.isBlocked(nx, nz, false, npc.def.id)) { mp.x = nx; mp.z = nz; }
             npc.mesh.rotation.y = Math.atan2(tx / td, tz / td);
             const sw = Math.sin(npc.t * 7) * 0.5;
             npc.parts.armL.rotation.x = sw;
@@ -291,6 +292,10 @@ export class NpcSystem {
         npc.mesh.rotation.y = Math.atan2(player.pos.x - mp.x, player.pos.z - mp.z);
       }
       if (d < 2.6 && d < nearestD) { nearest = npc; nearestD = d; }
+
+      // この人を 当たり判定に登録 (プレイヤーが すり抜けないように)。
+      // r=0.62 は 半径 ≒ 人のはば + プレイヤーのはば。会話は d<2.6 なので ちゃんと話しかけられる
+      this.world.npcColliders.push({ x: mp.x, z: mp.z, r: 0.62, id: npc.def.id });
 
       // 1日め、まだ話していないおばあちゃんに「!」マーカー (きづきやすく)
       if (npc.def.id === 'baachan' && c.day === 1 && !this.state.flags.metBaachan) markerNpc = npc;
