@@ -121,13 +121,16 @@ export class Sky {
     this.moon = new THREE.Mesh(new THREE.SphereGeometry(7, 16, 12), new THREE.MeshBasicMaterial({ color: 0xf5f0d8, fog: false }));
     scene.add(this.moon);
 
-    // 入道雲 (夏空の主役)
+    // 入道雲 (夏空の主役) — もくもくと 高く そびえる 積乱雲の 塔で 空を 劇場にする
     this.cumulus = [];
-    const spots = [[150, -270, 0], [-230, -200, 3], [260, -120, 6], [-120, 290, 9]];
-    for (const [x, z, sd] of spots) {
+    const spots = [
+      [150, -270, 0, 1.5], [-230, -200, 3, 1.25], [260, -120, 6, 1.7],
+      [-120, 290, 9, 1.3], [-40, -330, 12, 2.1], [330, -230, 15, 1.45],
+    ];
+    for (const [x, z, sd, sc] of spots) {
       const cl = makeCumulus(sd);
-      cl.position.set(x, 14, z);
-      cl.scale.setScalar(1.15);
+      cl.position.set(x, 12 + sc * 6, z);
+      cl.scale.set(sc, sc * 1.25, sc); // たてに のばして「そびえる」かたちに
       scene.add(cl);
       this.cumulus.push(cl);
     }

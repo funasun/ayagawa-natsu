@@ -436,6 +436,8 @@ function frame(forcedDt) {
   if (mm < 345) dayAmt = (mm - 295) / 50;            // 未明 → 夜明け
   else if (mm > 1140) dayAmt = 1 - (mm - 1140) / 55; // 日没 → 夜
   post.setDay(0.26 + 0.74 * Math.min(1, Math.max(0, dayAmt)));
+  // 夕やみが おりたら、家々の まどに あかりが ともる
+  if (world.windowGlow) world.windowGlow.visible = mm >= 1120 || mm < 320;
   post.render(scene, camera, performance.now() * 0.001);
 }
 

@@ -253,12 +253,31 @@ export function buildWorld(scene) {
   };
   const addCircle = (x, z, r) => world.circles.push({ x, z, r });
   const addRect = (x, z, hx, hz) => world.rects.push({ x, z, hx, hz });
+  // 夜になると ともる、家々の まど明かり (ノスタルジーの きめて)
+  const windowGlow = new THREE.Group();
+  windowGlow.userData.noMerge = true; // 表示を切りかえるので 結合しない
+  windowGlow.visible = false;
+  // 加算ブレンド: しょうじ板の おもてから かさねて「なかから ともる 障子のあかり」に見せる
+  const wgMat = new THREE.MeshBasicMaterial({
+    color: 0xcc8830, transparent: true, opacity: 0.85, side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const wgGeo = new THREE.PlaneGeometry(1.25, 0.95);
+  scene.add(windowGlow);
+  world.windowGlow = windowGlow;
+
   // 家: 本体 + 縁側 (張り出し) の両方に当たり判定をつける
   const addHouse = (x, z, w, d, ds = 1) => {
     addRect(x, z, w / 2 + 0.3, d / 2 + 0.3);
     addRect(x, z + ds * (d / 2 + 0.7), w * 0.45, 0.78);
     // カメラが 屋根のなかに 入らないよう 手前で とめる
     world.camObstacles.push({ x, z, r: Math.max(w, d) / 2 + 0.6, y0: groundY(x, z) + 2.2, y1: groundY(x, z) + 6.4 });
+    // まど明かり (えんがわ側に 2つ。よるだけ、しょうじが なかから ぽっと ともる)
+    for (const off of [-0.18, 0.18]) {
+      const q = new THREE.Mesh(wgGeo, wgMat);
+      q.position.set(x + w * off, groundY(x, z) + 1.9, z + ds * (d / 2 + 0.12));
+      windowGlow.add(q);
+    }
   };
   // カメラと主人公のあいだをふさぐ建物を半透明にするための登録
   world.indoor = false;
@@ -1188,6 +1207,33 @@ export function buildWorld(scene) {
     const mtn = new THREE.Mesh(new THREE.ConeGeometry(r, h, 10), smat(mcol));
     mtn.position.set(mx, h / 2 - 6, mz);
     scene.add(mtn);
+  }
+
+  // ---------- 遠景の第3層 (壮大さ: もやに とける さらに大きな 讃岐の山々) ----------
+  // 中景 (240前後) は もやが うすくかかり、遠景は ほぼ シルエット — 空気遠近の かさなりで
+  // 「盆地の むこうに 山が つらなる」僕夏の 壮大な ひろがりを つくる
+  const far3Defs = [
+    // [x, z, たかさ, すそ半径, あかるさ補正] — すそ野が あそびばに かからない 外周距離で
+    [-160, -360, 105, 150, 0],
+    [20, -385, 128, 170, 0.03],   // 正面おくの 主峰
+    [200, -355, 95, 140, 0.05],
+    [-330, -255, 88, 130, 0.02],
+    [340, -245, 84, 130, 0.04],
+    [-365, 145, 92, 140, 0.03],
+    [360, 175, 86, 130, 0.05],
+  ];
+  for (let i = 0; i < far3Defs.length; i++) {
+    const [mx, mz, h, r, lb] = far3Defs[i];
+    const mcol = new THREE.Color().setHSL(0.42, 0.18, 0.34 + lb);
+    const mtn = new THREE.Mesh(new THREE.ConeGeometry(r, h, 9), smat(mcol));
+    mtn.position.set(mx, h / 2 - 10, mz);
+    scene.add(mtn);
+  }
+  // 讃岐富士 (飯野山) — おわんを ふせたような きれいな円すい。東の彼方に ぽつんと
+  {
+    const fuji = new THREE.Mesh(new THREE.ConeGeometry(64, 72, 14), smat(new THREE.Color().setHSL(0.38, 0.24, 0.36)));
+    fuji.position.set(330, 26, -150);
+    scene.add(fuji);
   }
 
   // ---------- まつりの飾り (滝宮天満宮) ----------
