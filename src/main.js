@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { newState, loadState, saveState, clearSave } from './core/state.js';
+import { newState, loadState, saveState, clearSave, saveAlbum, loadAlbum } from './core/state.js';
 import { GameClock } from './core/clock.js';
 import { buildWorld } from './world/world.js';
 import { Sky } from './world/sky.js';
@@ -16,7 +16,7 @@ import { AudioEngine } from './audio/audio.js';
 import { UI } from './ui/ui.js';
 import { options, saveOptions } from './core/options.js';
 import { enterFullscreen, fsElement, fsSupported, lockLandscape } from './core/fullscreen.js';
-import { DAY_START, calDay, phaseOf } from './data/data.js';
+import { DAY_START, DAY_GUIDE, calDay, phaseOf } from './data/data.js';
 
 // --- three.js 基本 ---
 const isCoarse = matchMedia('(pointer: coarse)').matches;
@@ -202,9 +202,25 @@ async function sleep(auto) {
 
   if (state.day >= 31) {
     await ui.fade(true, 1600);
+    await events.dinner(); // さいごの晩餐 — はじめての夜とおなじ ごちそうと、ばあちゃんの手紙
     audio.setScene({ phase: 'night', weather: 'sunny', festivalNight: false });
     audio.sfx('train');
     await ui.showEnding();
+    // クリアしても きえない「おもいでアルバム」— この なつの きろくを のこす
+    saveAlbum({
+      finishedAt: Date.now(),
+      diary: state.diary,
+      bugs: state.bugs, fish: state.fish, caps: state.caps,
+      stamps: state.stamps, udon: state.udon,
+      mizukiri: state.mizukiri || 0, zarigani: state.zarigani || 0,
+      friend: state.friend,
+      flags: {
+        rodStory: !!state.flags.rodStory, unagiTold: !!state.flags.unagiTold,
+        nushiTold: !!state.flags.nushiTold, bunshuDone: !!state.flags.bunshuDone,
+        mukaebi: !!state.flags.mukaebi, okuribi: !!state.flags.okuribi,
+        minaYuki2: !!state.flags.minaYuki2, kentaPapa3: !!state.flags.kentaPapa3,
+      },
+    });
     clearSave();
     location.reload();
     return;
@@ -252,7 +268,12 @@ async function boot() {
   const saved = loadState();
   setTimeout(() => { ui.els.fade.style.opacity = 0; }, 400);
   maybeIosHint(); // iPhone なら タイトルのうちに「ホーム画面に追加」案内を出す
-  const action = await ui.showTitle(!!saved);
+  let action = await ui.showTitle(!!saved, !!loadAlbum());
+  while (action === 'album') {
+    // おもいでアルバム: クリアした なつの きろくを ながめて、タイトルへ もどる
+    await ui.showAlbum(loadAlbum());
+    action = await ui.showTitle(!!saved, !!loadAlbum());
+  }
   if (action === 'continue' && saved) {
     Object.assign(state, saved);
   } else {
@@ -364,6 +385,12 @@ function frame(forcedDt) {
     else if (state.flags.rodFound && !state.flags.rodBaachan) guide = 'つりざおの こと、おばあちゃんに きいてみよう';
     else if (state.flags.rodBaachan && !state.flags.rodStory) guide = 'じいちゃんの つりざおを、ため池の げんじいに 見せにいこう';
     else if (state.flags.bunshuHint && !state.flags.bunshuDone) guide = 'ひるまに 小学校で ぶんしゅうを 見せてもらおう';
+    else if (state.day === 13 && !state.flags.mukaebi) guide = 'ゆうがた、いえのまえで むかえびを たく (ばあちゃんと)';
+    else if (state.day === 15 && !state.flags.okuribi) guide = 'ゆうがた、いえのまえで おくりびを たく (ばあちゃんと)';
+    else if (state.flags.rodStory && state.day >= 16 && !state.flags.nushiHint) guide = 'げんじいが なにか おしえたそうに しとる (ため池)';
+    else if (state.flags.nushiHint && !state.flags.nushiCaught) guide = 'はれ/くもりの ゆうがた、ため池に「ぬしさま」の かげが 出る';
+    else if (state.flags.nushiCaught && !state.flags.nushiTold) guide = 'ぬしさまの こと、げんじいに ほうこくしよう';
+    if (!guide) guide = DAY_GUIDE[state.day] || null; // 日がわりの「きょうの めあて」
     ui.setGuide(guide);
   }
 

@@ -699,6 +699,14 @@ export class EventSystem {
       list.push({ x: -42.5, z: 58.5, r: 2.5, label: 'ぶんしゅうを 見せてもらう', action: () => this.bunshu() });
     }
 
+    // お盆: 迎え火 (13日の夕方) と 送り火 (15日の夕方)。いえの まえで ばあちゃんと
+    if (c.day === 13 && c.min >= 1080 && !s.flags.mukaebi) {
+      list.push({ x: 117.5, z: 19.5, r: 2.6, label: 'むかえびを たく (ばあちゃんと)', action: () => this.mukaebi() });
+    }
+    if (c.day === 15 && c.min >= 1080 && !s.flags.okuribi) {
+      list.push({ x: 117.5, z: 19.5, r: 2.6, label: 'おくりびを たく (ばあちゃんと)', action: () => this.okuribi() });
+    }
+
     // 川あそび (あつい はれの日の ひるま。とびいしの ちかくの あさせで)
     if (c.weather === 'sunny' && c.min >= 600 && c.min < 960 && c.day >= 2 && !s.flags['oyogu' + c.day]) {
       list.push({ x: 48, z: 11.2, r: 2.8, label: 'かわに はいって あそぶ', action: () => this.kawaAsobi() });
@@ -920,6 +928,25 @@ export class EventSystem {
     const min = this.clock.min;
     const day = this.clock.day;
     const pick = (arr) => arr[day % arr.length];
+    // ---- ものがたりの優先トピック --------------------------------------
+    // だいじな はなしは、いえの なかでも そとでも、かならず さきに 出る。
+    // (まえは 屋外のばあちゃんしか 竿のはなしを しらず、夕方に きくと
+    //  いつまでも はなしが すすまない バグに なっとった)
+    if (s.flags.rodFound && !s.flags.rodBaachan) {
+      s.flags.rodBaachan = true;
+      s.friend.baachan = (s.friend.baachan || 0) + 1;
+      if (!s.talkedToday.baachan) { s.talkedToday.baachan = true; }
+      await this.ui.say('おばあちゃん', [
+        'ん? どうしたんな、そんな ふるいもん かかえて。……ああ。おしいれの おくかあ。',
+        'それはな、おじいさんの 竿じゃ。あんたの おじいさん ―― 修二さんのな。',
+        '釣りが すきで すきでなあ。やすみの日は あさから 北条池に おって、ばんに なっても 帰ってこん。',
+        'いっつも いっしょに おったんが、ため池の げんじいさんよ。ふたりで よう けんかして、よう わろうて。',
+        '……その竿、あんたが つかい。しまいこんどくより、おじいさんも そのほうが よろこぶわ。',
+        'げんじいさんにも 見せてあげまい。きっと なつかしがるけんな。',
+      ]);
+      logEvent(s, 'じいちゃんのつりざおのこと、ばあちゃんにきいた');
+      return;
+    }
     let lines;
     if (day === 1 && min < 600) {
       lines = [
@@ -1395,6 +1422,46 @@ export class EventSystem {
     logEvent(s, 'かわであそんだ');
   }
 
+  // お盆の迎え火 (13日の夕方): じいちゃんが「帰ってくる」よる
+  async mukaebi() {
+    const s = this.state;
+    s.flags.mukaebi = true;
+    s.friend.baachan = (s.friend.baachan || 0) + 1;
+    this.audio.sfx('coin');
+    await this.ui.fadePulse();
+    s.min = Math.max(s.min, 1130);
+    const pages = [
+      'いえの まえで、ばあちゃんと ちいさな たきびを たく。<br>おがらが パチ、パチ、と はぜて、<br>けむりが まっすぐ そらへ のぼっていく。',
+      '「このけむりを めじるしに、ご先祖さまが 帰ってくるんよ」<br><br>ばあちゃんは ひに むかって、<br>ちいさく てを あわせた。',
+    ];
+    if (s.flags.rodBaachan) {
+      pages.push('「おじいさん、みてみまい。あんたの 竿、<br>この子が つこうとるんよ」<br><br>ゆらめく ひの むこうに、<br>あったこともない じいちゃんが おる気がした。');
+    } else {
+      pages.push('ひの ゆらめきを みとったら、<br>あったことのない じいちゃんの ことを<br>かんがえとった。<br><br>どんな ひとやったんかな。');
+    }
+    await this.ui.showStory(pages);
+    this.ui.toast('けむりの におい、なんだか なつかしい……');
+    logEvent(s, 'ばあちゃんとむかえびをたいた');
+  }
+
+  // お盆の送り火 (15日の夕方): 「またらいねん」を いう よる
+  async okuribi() {
+    const s = this.state;
+    s.flags.okuribi = true;
+    s.friend.baachan = (s.friend.baachan || 0) + 1;
+    this.audio.sfx('coin');
+    await this.ui.fadePulse();
+    s.min = Math.max(s.min, 1130);
+    const pages = [
+      'きょうで おぼんは おしまい。<br>いえの まえで、おくりびを たく。<br><br>おがらの ひが、ゆうやみに ぽつんと あかるい。',
+      '「ご先祖さまは、この けむりに のって 帰りよるんよ。<br>……また来年な、いうてな」<br><br>ばあちゃんの こえが、いつもより ちょっと ちいさい。',
+      'けむりは ゆっくり、たかく たかく のぼって、<br>いちばんぼしの ちかくで 見えんくなった。<br><br>「また来年」って、ぼくも こころのなかで いうた。<br>じいちゃんにも。この なつにも。',
+    ];
+    await this.ui.showStory(pages);
+    this.ui.toast('そらの たかいとこで、ひこうきぐもが ひかっとった');
+    logEvent(s, 'ばあちゃんとおくりびをたいた');
+  }
+
   // ばんごはん (ねるまえの まいばんの儀式。日がわりの おかずと、ばあちゃんの ひとこと)
   // — 一日の おわりに かならず 食卓を はさむことで、「ねるだけで とばす」あそびかたを
   //   やめて、まいにちに 生活の 手ざわりを のこす
@@ -1415,7 +1482,15 @@ export class EventSystem {
     ];
     const mm = menus[day % menus.length];
     let pages;
-    if (day === 1) {
+    if (day >= 31) {
+      // さいごの晩餐: ごちそうと、ばあちゃんの 手紙
+      s.flags.baachanLetter = true;
+      pages = [
+        'さいごの ばんごはんは、ちゃぶだいに のりきらんくらいの ごちそうやった。<br><br>ちらしずし。てんぷら。しょうゆまめ。<br>はじめての ばんと、おんなじ おかずが ならんどる。',
+        'ばあちゃんは あんまり しゃべらんと、<br>ぼくが たべるのを ずっと にこにこ みとった。<br><br>「たんと おあがり。……たんとな」',
+        'たべおわると、ばあちゃんは たんすの ひきだしから<br>ふうとうを いちまい だして、ぼくの てに のせた。<br><br>「でんしゃの なかで よみまい。<br>いま よんだら、ばあちゃんが なくけんな」',
+      ];
+    } else if (day === 1) {
       pages = [
         'ちゃぶだいに、ばんごはんが ならんどる。<br>きょうは おいわいやいうて、ちらしずしに てんぷらに、<br>さぬきうどんまで ついとる。<br><br>「よう きたなあ。この なつは、ここが あんたの いえや」',
         'せんぷうきの かぜ。とけいの コチコチ。<br>しらない いえの においが、すこしずつ<br>「なつやすみの におい」に かわっていく。',

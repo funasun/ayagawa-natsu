@@ -1,4 +1,16 @@
 const KEY = 'ayagawa_natsu_save_v1';
+const ALBUM_KEY = 'ayagawa_natsu_album_v1';
+
+// クリア後も きえない「おもいでアルバム」。ゲームを おえても、なつの きろくは のこる
+export function saveAlbum(album) {
+  try { localStorage.setItem(ALBUM_KEY, JSON.stringify(album)); } catch (e) { /* private mode等 */ }
+}
+export function loadAlbum() {
+  try {
+    const a = JSON.parse(localStorage.getItem(ALBUM_KEY));
+    return a && a.diary ? a : null;
+  } catch (e) { return null; }
+}
 
 export function newState() {
   return {

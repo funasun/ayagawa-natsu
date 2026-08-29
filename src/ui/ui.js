@@ -730,7 +730,7 @@ export class UI {
   }
 
   // ---------- タイトル ----------
-  showTitle(hasSave) {
+  showTitle(hasSave, hasAlbum) {
     return new Promise((resolve) => {
       this.modalCount++;
       this.els.title.innerHTML = `
@@ -740,6 +740,7 @@ export class UI {
           <div class="title-menu">
             <button class="title-btn" data-a="new">はじめから</button>
             ${hasSave ? '<button class="title-btn" data-a="continue">つづきから</button>' : ''}
+            ${hasAlbum ? '<button class="title-btn" data-a="album">おもいでアルバム</button>' : ''}
           </div>
           <div class="title-help">WASD/やじるし: あるく ・ Shift: はしる ・ E: しらべる/はなす ・ Z: ずかん ・ X: ちず ・ M: おと</div>
           <div class="title-note">クリックすると おとが でます</div>
@@ -768,6 +769,50 @@ export class UI {
   }
 
   // ---------- エンディング ----------
+  // おもいでアルバム: クリアした なつの きろく (にっき・コレクション) を いつでも 見かえせる
+  async showAlbum(album) {
+    if (!album) return;
+    this.modalCount++;
+    const nBugs = Object.keys(album.bugs || {}).length;
+    const nFish = Object.keys(album.fish || {}).length;
+    const nCaps = Object.keys(album.caps || {}).length;
+    const friends = Object.values(album.friend || {}).filter((v) => v >= 3).length;
+    const pages = [
+      `<span class="end-title">おもいでアルバム</span><br><br>あの なつの、31にちの きろく。`,
+      `<div class="end-stats">
+        <div>つかまえた むし …… ${nBugs} しゅるい</div>
+        <div>つった さかな …… ${nFish} しゅるい</div>
+        <div>あつめた 王冠 …… ${nCaps} しゅるい</div>
+        <div>ラジオたいそう …… ${album.stamps || 0} かい</div>
+        <div>あさうどん …… ${album.udon || 0} はい</div>
+        <div>みずきり さいこう …… ${album.mizukiri || 0} だん</div>
+        <div>かきつづけた にっき …… ${(album.diary || []).length} ページ</div>
+        <div>なかよくなった ひと …… ${friends} にん</div>
+      </div>`,
+    ];
+    // にっきの ハイライトを ひろって めくる (ぜんぶは ながいので、おもいでの こい日を)
+    const d = album.diary || [];
+    const pickDays = [1, 6, 9, 13, 20, 25, 30];
+    const picked = [];
+    for (const pd of pickDays) { const e = d.find((x) => x.day === pd); if (e) picked.push(e); }
+    if (!picked.length && d.length) picked.push(d[0], d[Math.floor(d.length / 2)], d[d.length - 1]);
+    for (const e of picked.filter(Boolean).slice(0, 7)) {
+      pages.push(`<div class="diary-head">${e.header}</div><br>${e.text}`);
+    }
+    const done = [];
+    if (album.flags) {
+      if (album.flags.rodStory) done.push('じいちゃんの 竿で、げんじいと はなした');
+      if (album.flags.unagiTold) done.push('あやがわの主 (ウナギ) を つりあげた');
+      if (album.flags.nushiTold) done.push('ほうじょういけの ぬしさまを つりあげた');
+      if (album.flags.mukaebi) done.push('むかえびと おくりびを たいた');
+      if (album.flags.bunshuDone) done.push('おかあさんの ぶんしゅうを よんだ');
+    }
+    if (done.length) pages.push(`<b>この なつに できたこと</b><br><br>${done.join('<br>')}`);
+    pages.push('なんど よみかえしても、<br>あの なつの においが する。<br><br>― おもいでアルバム おしまい ―');
+    await this.showStory(pages);
+    this.modalCount--;
+  }
+
   async showEnding() {
     const s = this.state;
     this.modalCount++;
@@ -790,6 +835,16 @@ export class UI {
     pages.push(
       `「また おいでな」<br><br>ばあちゃんの こえが、セミのこえに まじって きこえた。<br>まどのそとで、あやがわの まちが ながれていく。`,
     );
+    // ばあちゃんの手紙 (さいごの晩餐で わたされた ふうとう)
+    if (s.flags.baachanLetter) {
+      pages.push(
+        'でんしゃが うごきだしてから、<br>ポケットの ふうとうを あけた。<br><br>ふるい えんぴつの じで、こう かいてあった。',
+        '『この なつ、あんたが おってくれて<br>ばあちゃんは まいにちが たからもんじゃった。<br><br>おじいさんもな、きっと ずっと<br>あんたの よこで いっしょに あそびよったよ。』',
+        '『とうきょうに かえっても、<br>ごはんは ようけ たべること。<br>こまったときは、この なつを おもいだすこと。<br><br>ほんで また、来年の なつも おいでまい。<br>ばあちゃんは ずっと ここに おるけんな。』',
+        'まどの そとの たんぼが にじんで、<br>よく 見えんくなった。<br><br>……セミの こえだけが、ずっと ついてくる。',
+      );
+    }
+    if (s.flags.nushiTold) pages.push('つりばこの なかには、げんじいが くれた<br>ぬしさまの うろこが いちまい。<br><br>「30年もんの しょうこじゃ。もっとけ」<br><br>てのひらで、金いろに ひかっとる。');
     if (s.flags.rodStory) pages.push('ひざの うえには、しんぶんしに つつんだ<br>じいちゃんの つりざお。<br><br>「来年は その竿と しょうぶじゃ」<br>げんじいの こえが、まだ みみに のこっとる。');
     if (s.flags.bunshuDone) pages.push('かえったら、おかあさんに はなそう。<br><br>ぶんしゅうの こと。かっぱの こと。<br>おかあさんの なつやすみと、<br>ぼくの なつやすみの こと。');
     if (s.flags.minaYuki2) pages.push('ポケットの おくに、ミナから もらった<br>ひまわりの たねが ひとつぶ。<br><br>「はなれても ともだちや」<br><br>とうきょうの ベランダに うえたら、<br>らいねんの なつ、あやがわと おなじ はなが さく。');
@@ -807,6 +862,7 @@ export class UI {
       </div>`,
       `── それから、なんねんも たった。<br><br>おとなに なった いまでも、<br>8がつの ゆうがたに セミのこえを きくと、<br>あの なつの においが する。`,
       `ぼくは きっと、この なつを わすれない。<br><br><span class="end-title">あやがわの夏</span><br><br>― おわり ―`,
+      `この なつの きろくは、タイトルの<br>「おもいでアルバム」に のこりました。<br><br>いつでも、あいに きてください。`,
     );
     await this.showStory(pages);
     this.modalCount--;
