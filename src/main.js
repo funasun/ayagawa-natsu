@@ -211,6 +211,7 @@ async function sleep(auto) {
   }
 
   await ui.fade(true, 1200);
+  await events.dinner(); // ばんごはん (まいばんの儀式。日がわりの食卓)
   await ui.showDiary(gameClock);
   state.day += 1;
   state.min = DAY_START;

@@ -59,11 +59,20 @@ export class FishingSystem {
 
   pickFish() {
     const min = this.clock.min;
+    const day = this.clock.day;
+    const weather = this.clock.weather;
     const pool = [];
     for (const f of FISH) {
       if (f.zone !== 'both' && f.zone !== this.zone) continue;
-      if (f.time && (min < f.time[0] || min > f.time[1])) continue;
-      for (let i = 0; i < 4 - f.rarity; i++) pool.push(f);
+      // 時間帯 (time2 が あれば そちらの帯でも OK — カブトムシ方式)
+      const inT1 = !f.time || (min >= f.time[0] && min <= f.time[1]);
+      const inT2 = f.time2 && min >= f.time2[0] && min <= f.time2[1];
+      if (!inT1 && !inT2) continue;
+      if (f.days && (day < f.days[0] || day > f.days[1])) continue;         // 日付 (夏の前半だけ 等)
+      if (f.weather && !f.weather.includes(weather)) continue;               // 天気 (雨の日だけ 等)
+      if (f.flag && !this.state.flags[f.flag]) continue;                     // ものがたりの解禁フラグ
+      if (f.nushi && Math.random() > 0.3) continue;                          // ぬしは なかなか かからん
+      for (let i = 0; i < Math.max(1, 4 - f.rarity); i++) pool.push(f);
     }
     if (!pool.length) return null;
     return pool[Math.floor(Math.random() * pool.length)];
@@ -76,6 +85,13 @@ export class FishingSystem {
     const first = !this.state.fish[f.id];
     this.state.fish[f.id] = (this.state.fish[f.id] || 0) + 1;
     this.audio.sfx('catch');
+    if (f.nushi) {
+      // ものがたりの さかな — げんじいと じいちゃんが おいつづけた ぬし
+      this.state.flags.nushiCaught = true;
+      this.ui.toast(`つ、つれた……!! ${f.name} (${f.len})!!`, 'gold');
+      logEvent(this.state, 'ほうじょういけのぬしをつりあげた!!');
+      return;
+    }
     this.ui.toast(`${f.name} (${f.len}) をつった!${first ? ' 【ずかんに とうろく!】' : ''}`, first ? 'gold' : null);
     logEvent(this.state, `${f.name}をつった`);
     if (f.id === 'unagi') this.state.flags.unagi = true;

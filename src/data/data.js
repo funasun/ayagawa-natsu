@@ -31,6 +31,9 @@ export const FISH = [
   { id: 'bluegill', name: 'ブルーギル', rarity: 1, zone: 'pond', len: '15cm', desc: 'ため池ならどこにでもいる、げんきなやつ。' },
   { id: 'medaka', name: 'メダカ', rarity: 2, zone: 'pond', len: '3cm', desc: 'ちいさなちいさな、すいめんのきらめき。' },
   { id: 'ayu', name: 'アユ', rarity: 3, zone: 'sawa', len: '17cm', desc: 'つつみやまの たきつぼのぬし。てづかみでしか つかまえられん。しおやきは さいこう!' },
+  { id: 'ugui', name: 'ウグイ', rarity: 2, zone: 'river', weather: ['rain', 'storm'], len: '21cm', desc: 'あめの日にだけ うわずってくる。あめつりの あいぼう。' },
+  { id: 'donko', name: 'ドンコ', rarity: 2, zone: 'river', time: [1080, 1290], weather: ['cloudy', 'rain'], len: '13cm', desc: 'くもりの よるに いしのかげから ぬっと でてくる。' },
+  { id: 'nushi', name: 'ぬしさま', rarity: 3, nushi: true, zone: 'pond', time: [1020, 1170], weather: ['sunny', 'cloudy'], flag: 'nushiHint', len: '88cm', desc: 'ほうじょういけの ぬし。じいちゃんと げんじいが おいつづけた、まぼろしの 大ゴイ。' },
 ];
 
 // ラムネの王冠コレクション (だがしやで ラムネをのむ / 道ばたで ひろう)
