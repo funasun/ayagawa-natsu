@@ -1,6 +1,6 @@
 import { logEvent, capCount, bugCount, fishCount } from '../core/state.js';
 import { phaseOf, youbi, TIME_SCALE, CAPS } from '../data/data.js';
-import { TAKIBO } from '../world/world.js';
+import { TAKIBO, BRIDGE_X, BRIDGE2_X, riverCenterZ, RIVER_HALF } from '../world/world.js';
 
 // 王冠ガチャ (でやすさのおもみつき)
 function pickCap() {
@@ -705,6 +705,13 @@ export class EventSystem {
       list.push({ x: 48, z: 11.2, r: 2.8, label: 'かわに はいって あそぶ', action: () => this.kawaAsobi() });
     }
 
+    // 橋のまんなかから とびこみ (はれ・くもりの あかるいうち。僕夏の あの気持ちよさ)
+    if (c.min >= 540 && c.min < 1080 && c.weather !== 'rain' && c.weather !== 'storm' && c.day >= 2) {
+      for (const bx of [BRIDGE_X, BRIDGE2_X]) {
+        list.push({ x: bx, z: riverCenterZ(bx), r: 2.3, label: 'はしから かわに とびこむ', action: () => this.tobikomi() });
+      }
+    }
+
     // かわらで みずきり (あかるいうちなら いつでも。じこベストを記録)
     if (c.min >= 420 && c.min < 1140 && c.weather !== 'storm') {
       list.push({ x: 14, z: 6.5, r: 2.2, label: 'かわらで みずきりを する', action: () => this.mizukiri() });
@@ -878,6 +885,8 @@ export class EventSystem {
     await this.ui.fade(true, fadeMs);
     this.world.indoor = !!sub;
     this.world.sub = sub;
+    // 車窓のながめ (トレインライド) は 乗車中だけ 描画する
+    if (this.world.trainRide) this.world.trainRide.group.visible = (sub === this.world.trainRide);
     p.mesh.position.set(x, sub ? sub.floorY : this.world.groundY(x, z), z);
     p.heading = heading;
     p.mesh.rotation.y = heading;
@@ -1385,6 +1394,31 @@ export class EventSystem {
     this.audio.sfx('splash');
     this.ui.toast('ようけ あそんだ! ……くちびるが ちょっと むらさきに なっとる');
     logEvent(s, 'かわであそんだ');
+  }
+
+  // 橋のらんかんに あしを かけて、なつの川へ ドボン
+  async tobikomi() {
+    const s = this.state;
+    const yes = await this.ui.choice('らんかんの むこうで、みなもが きらきらしとる。<br>……とぶ?', ['えいっ!', 'やっぱり やめとく']);
+    if (yes !== 0) { this.ui.toast('……きょうは ながめるだけに しとこ'); return; }
+    this.ui.toast('いきを おおきく すいこんで――');
+    await new Promise((r) => setTimeout(r, 900));
+    this.audio.sfx('splash');
+    await this.ui.fadePulse();
+    s.min = Math.min(s.min + 25, 1255);
+    const first = !s.flags.tobikomiDone;
+    s.flags.tobikomiDone = true;
+    await this.ui.showStory([
+      'ふわっと からだが うく。<br>つぎの しゅんかん、みずの つめたさが ドン! とくる。<br><br>あわの むこうに、ゆらゆら ひかる みなも。',
+      first
+        ? 'かわから かおを だすと、はなの おくが ツンとした。<br><br>「じいちゃんも わかいころ、あのはしから とんだんやで」<br>いつか ばあちゃんが いうとった。<br><br>おなじ はしから。おなじ なつに。'
+        : 'ぬれた シャツが はだに はりつく。<br>それが きもちいいくらい、きょうの そらは あつい。<br><br>もういっかい、とぼうかな。',
+    ]);
+    // 川べりの 岸に あがる
+    const p = this.player.pos;
+    await this.warpTo(null, p.x + 1.6, riverCenterZ(p.x) + RIVER_HALF + 1.8, 0, 400);
+    this.ui.toast('びしょぬれで 岸に あがった。……さいこうや!');
+    logEvent(s, 'はしから かわに とびこんだ');
   }
 
   async miharashi() {

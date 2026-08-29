@@ -10,6 +10,7 @@ import {
 import { buildInterior, buildUpstairs } from './interior.js';
 import { buildTrainRide } from './train.js';
 import { buildTakamatsu } from './takamatsu.js';
+import { optimizeStatic } from './optimize.js';
 
 // ==== 実在の綾川町の地理 ====
 // +x = 北 (下流・陶方面) / -x = 南 (上流・綾上方面) / +z = 東 / -z = 西
@@ -256,14 +257,17 @@ export function buildWorld(scene) {
   const addHouse = (x, z, w, d, ds = 1) => {
     addRect(x, z, w / 2 + 0.3, d / 2 + 0.3);
     addRect(x, z + ds * (d / 2 + 0.7), w * 0.45, 0.78);
+    // カメラが 屋根のなかに 入らないよう 手前で とめる
+    world.camObstacles.push({ x, z, r: Math.max(w, d) / 2 + 0.6, y0: groundY(x, z) + 2.2, y1: groundY(x, z) + 6.4 });
   };
   // カメラと主人公のあいだをふさぐ建物を半透明にするための登録
   world.indoor = false;
   world.occluders = [];
+  world.camObstacles = []; // カメラが めり込まないための 遮蔽円柱 {x,z,r,y0,y1}
   const registerOccluder = (obj, x, z, r, topY) => {
     const mats = new Set();
     obj.traverse((o) => { if (o.isMesh) mats.add(o.material); });
-    world.occluders.push({ x, z, r, topY, mats: [...mats], fade: 1 });
+    world.occluders.push({ obj, x, z, r, topY, mats: [...mats], fade: 1 });
   };
   const gy = (x, z) => groundY(x, z);
   const dummy = new THREE.Object3D();
@@ -1459,6 +1463,7 @@ export function buildWorld(scene) {
   world.interior = buildInterior(scene);
   world.interior2f = buildUpstairs(scene);
   world.trainRide = buildTrainRide(scene);
+  world.trainRide.group.visible = false; // 乗車中だけ 表示 (552メッシュの節約)
   world.takamatsu = buildTakamatsu(scene);
   world.sub = null; // 現在いるサブエリア (null = 綾川の外の世界)
   for (const oc of world.takamatsu.occluders) world.occluders.push(oc);
@@ -1469,6 +1474,9 @@ export function buildWorld(scene) {
       const b = world.sub.bounds;
       if (x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ) return true;
       for (const r of world.sub.rects) if (Math.abs(x - r.x) < r.hx + 0.35 && Math.abs(z - r.z) < r.hz + 0.35) return true;
+      // 屋内の ばあちゃんも すり抜けない
+      const bc = world.sub.baachan;
+      if (bc && bc.visible && Math.hypot(x - bc.position.x, z - bc.position.z) < 0.66) return true;
       return false;
     }
     // うごく人 (NPC) にぶつかる。skipId で 自分の 円は のぞく (自己衝突ふせぎ)
@@ -1479,7 +1487,8 @@ export function buildWorld(scene) {
     if (Math.abs(x) > 232 || z > 148 || z < -212) return true; // みなみは山のむこうまで あるける
     const rc = riverCenterZ(x);
     const dR = Math.abs(z - rc);
-    if (dR < RIVER_HALF + 0.5 && !(x > BRIDGE_X - 2.4 && x < BRIDGE_X + 2.4) && !(x > BRIDGE2_X - 2.4 && x < BRIDGE2_X + 2.4) && !(x > BRIDGE3_X - 2.4 && x < BRIDGE3_X + 2.4) && !(x > TOBIISHI_X - 1.2 && x < TOBIISHI_X + 1.2)) return true;
+    // 橋のうえは デッキ高さの範囲 (±2.2 < デッキ±2.3) だけ歩ける = らんかんから うっかり落ちない
+    if (dR < RIVER_HALF + 0.5 && !(x > BRIDGE_X - 2.2 && x < BRIDGE_X + 2.2) && !(x > BRIDGE2_X - 2.2 && x < BRIDGE2_X + 2.2) && !(x > BRIDGE3_X - 2.2 && x < BRIDGE3_X + 2.2) && !(x > TOBIISHI_X - 1.2 && x < TOBIISHI_X + 1.2)) return true;
     if (dR < 13 && railDist(x, z) < 1.6) return true; // 川ちかくの線路の盛り土
     if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 0.5) return true;
     for (const cc of world.circles) if (Math.hypot(x - cc.x, z - cc.z) < cc.r + 0.45) return true;
@@ -1512,6 +1521,22 @@ export function buildWorld(scene) {
       }
     }
   };
+
+  // 木の樹冠のカメラ遮蔽円柱を、結合まえに ワールド座標で あつめる
+  {
+    scene.updateMatrixWorld(true);
+    const wp = new THREE.Vector3(), wq = new THREE.Quaternion(), ws = new THREE.Vector3();
+    scene.traverse((o) => {
+      const cb = o.userData && o.userData.camBlock;
+      if (!cb) return;
+      o.matrixWorld.decompose(wp, wq, ws);
+      const sc = (ws.x + ws.z) / 2;
+      world.camObstacles.push({ x: wp.x, z: wp.z, r: cb.r * sc, y0: wp.y + cb.y0 * ws.y, y1: wp.y + cb.y1 * ws.y });
+    });
+  }
+
+  // 描画の骨組み最適化 (マテリアル共有 + 静的メッシュ結合)。構築のさいごに1回だけ
+  optimizeStatic(scene, world);
 
   world.waterZone = (x, z) => {
     if (world.indoor) return null;

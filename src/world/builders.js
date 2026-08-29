@@ -21,7 +21,15 @@ function canvasTex(size, draw, repeat = [1, 1]) {
   return t;
 }
 
-export const kawaraTex = (base = '#4a5560') => canvasTex(64, (ctx, s) => {
+// おなじ見た目のテクスチャは 1まいを 使いまわす (マテリアル共有・メッシュ結合が 効くように)。
+// ※ waterTex は メモ化しない — 川/滝/沢で offset を べつべつの速さで うごかすため
+const texCache = new Map();
+const memoTex = (key, make) => {
+  if (!texCache.has(key)) texCache.set(key, make());
+  return texCache.get(key);
+};
+
+export const kawaraTex = (base = '#4a5560') => memoTex(`kawara|${base}`, () => canvasTex(64, (ctx, s) => {
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, s, s);
   for (let y = 0; y < s; y += 8) {
@@ -34,9 +42,9 @@ export const kawaraTex = (base = '#4a5560') => canvasTex(64, (ctx, s) => {
       ctx.fillRect(x, y, 1, 8);
     }
   }
-}, [3, 2]);
+}, [3, 2]));
 
-export const woodTex = (base = '#7a5a38') => canvasTex(64, (ctx, s) => {
+export const woodTex = (base = '#7a5a38') => memoTex(`wood|${base}`, () => canvasTex(64, (ctx, s) => {
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, s, s);
   for (let x = 0; x < s; x += 6) {
@@ -47,18 +55,18 @@ export const woodTex = (base = '#7a5a38') => canvasTex(64, (ctx, s) => {
     ctx.fillStyle = 'rgba(35,18,6,0.25)';
     ctx.fillRect(Math.random() * s, Math.random() * s, 1, 3 + Math.random() * 8);
   }
-}, [2, 1]);
+}, [2, 1]));
 
-export const plasterTex = () => canvasTex(64, (ctx, s) => {
+export const plasterTex = () => memoTex('plaster', () => canvasTex(64, (ctx, s) => {
   ctx.fillStyle = '#f1e7d0';
   ctx.fillRect(0, 0, s, s);
   for (let i = 0; i < 240; i++) {
     ctx.fillStyle = `rgba(150,130,95,${Math.random() * 0.12})`;
     ctx.fillRect(Math.random() * s, Math.random() * s, 2, 2);
   }
-});
+}));
 
-export const grassTex = () => canvasTex(256, (ctx, s) => {
+export const grassTex = () => memoTex('grass', () => canvasTex(256, (ctx, s) => {
   ctx.fillStyle = '#6d9646';
   ctx.fillRect(0, 0, s, s);
   // 濃淡のまだら (土や日焼けのムラ)
@@ -78,7 +86,7 @@ export const grassTex = () => canvasTex(256, (ctx, s) => {
     ctx.fillStyle = 'rgba(150,190,95,0.35)';
     ctx.fillRect(Math.random() * s, Math.random() * s, 2, 2);
   }
-}, [40, 40]);
+}, [40, 40]));
 
 export const waterTex = () => canvasTex(128, (ctx, s) => {
   ctx.fillStyle = '#3f7e94';
@@ -110,6 +118,7 @@ export function makeTree(big = false, seed = 0) {
   trunk.rotation.z = (rnd(2) - 0.5) * 0.1;
   trunk.castShadow = true;
   g.add(trunk);
+  g.userData.camBlock = { r: (big ? 2.5 : 1.5) * s, y0: trunkH * 0.5, y1: trunkH + 2.4 * s }; // カメラめり込み防止の樹冠円柱
   // 枝
   for (let i = 0; i < (big ? 3 : 2); i++) {
     const br = m(new THREE.CylinderGeometry(0.05 * s, 0.09 * s, 1.1 * s, 5), smat(0x5d452c),
@@ -140,6 +149,7 @@ export function makePine(seed = 0) {
   trunk.rotation.z = Math.sin(seed) * 0.12;
   trunk.castShadow = true;
   g.add(trunk);
+  g.userData.camBlock = { r: 1.6 * s, y0: 1.6 * s, y1: 6.2 * s }; // カメラめり込み防止
   for (let i = 0; i < 4; i++) {
     const r = (1.5 - i * 0.28) * s;
     const cone = m(new THREE.ConeGeometry(r, 1.3 * s, 8), smat(new THREE.Color().setHSL(0.32, 0.35, 0.2 + i * 0.03)), 0, (2.4 + i * 1.05) * s, 0);
@@ -357,6 +367,7 @@ export function makeAppleTree(seed = 0) {
   crown.scale.y = 0.9;
   crown.castShadow = true;
   g.add(crown);
+  g.userData.camBlock = { r: 1.35, y0: 0.9, y1: 2.9 }; // カメラめり込み防止
   for (let i = 0; i < 6; i++) {
     const a = rnd(i + 3) * Math.PI * 2, ph = 0.4 + rnd(i + 9) * 2.2;
     g.add(m(new THREE.SphereGeometry(0.09, 6, 5), smat(0xc23b2e),

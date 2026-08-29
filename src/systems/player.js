@@ -41,11 +41,34 @@ export class Player {
     return v;
   }
 
+  // カメラが 木のはっぱや 家の屋根に めり込まないよう、さえぎりの手前へ ひきよせる
+  resolveCamBlock(v) {
+    const obs = this.world.camObstacles;
+    if (!obs || this.world.indoor) return v;
+    const px = this.pos.x, py = this.pos.y + 2.3, pz = this.pos.z;
+    const dx = v.x - px, dy = v.y - py, dz = v.z - pz;
+    const reach = Math.hypot(dx, dz) + 0.001;
+    let tHit = 1;
+    for (const o of obs) {
+      if (Math.abs(o.x - px) > reach + o.r || Math.abs(o.z - pz) > reach + o.r) continue;
+      for (let s = 2; s <= 10; s++) {
+        const t = s / 10;
+        if (t >= tHit) break;
+        const y = py + dy * t;
+        if (y < o.y0 || y > o.y1) continue;
+        if (Math.hypot(px + dx * t - o.x, pz + dz * t - o.z) < o.r) { tHit = Math.max(0.18, t - 0.1); break; }
+      }
+    }
+    if (tHit < 1) v.set(px + dx * tHit, py + dy * tHit, pz + dz * tHit);
+    return v;
+  }
+
   snapCamera() {
     if (this.world.indoor) this.camYaw = 0; // 屋内は 正面すえおき
     const y = this.camYaw;
     this.camPos.copy(this.pos).add(new THREE.Vector3(this.camDist * Math.sin(y), this.camHigh, this.camDist * Math.cos(y)));
     this.clampCamY(this.camPos);
+    this.resolveCamBlock(this.camPos);
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(this.pos.x, this.pos.y + this.camLook, this.pos.z);
   }
@@ -91,8 +114,18 @@ export class Player {
       const nx = (wx / len) * speed * dt;
       const nz = (wz / len) * speed * dt;
       const p = this.pos;
-      if (!this.world.isBlocked(p.x + nx, p.z, festivalOn)) p.x += nx;
-      if (!this.world.isBlocked(p.x, p.z + nz, festivalOn)) p.z += nz;
+      // 急な のぼり斜面 (山はだ・がけ) には 体が めり込まないよう すすめない
+      const gyF = this.world.groundY;
+      const canStep = (fx, fz, tx, tz) => {
+        if (this.world.isBlocked(tx, tz, festivalOn)) return false;
+        if (!this.world.indoor && gyF) {
+          const rise = gyF(tx, tz) - gyF(fx, fz);
+          if (rise / (Math.hypot(tx - fx, tz - fz) || 1) > 1.6) return false;
+        }
+        return true;
+      };
+      if (canStep(p.x, p.z, p.x + nx, p.z)) p.x += nx;
+      if (canStep(p.x, p.z, p.x, p.z + nz)) p.z += nz;
       const target = Math.atan2(wx / len, wz / len);
       let diff = target - this.heading;
       while (diff > Math.PI) diff -= Math.PI * 2;
@@ -110,9 +143,17 @@ export class Player {
     this.parts.armR.rotation.x = -sw;
     this.parts.legL.rotation.x = -sw;
     this.parts.legR.rotation.x = sw;
-    const gy = this.world.groundY ? this.world.groundY(this.pos.x, this.pos.z) : 0;
+    const gyFn = this.world.groundY;
+    const gy = gyFn ? gyFn(this.pos.x, this.pos.z) : 0;
+    // 斜面では 描画メッシュ (2mグリッド) と 解析地形が ずれて 足が うまるので、勾配ぶん すこし もちあげる
+    let slopeLift = 0;
+    if (gyFn && !this.world.indoor) {
+      const gsx = Math.abs(gyFn(this.pos.x + 0.4, this.pos.z) - gyFn(this.pos.x - 0.4, this.pos.z));
+      const gsz = Math.abs(gyFn(this.pos.x, this.pos.z + 0.4) - gyFn(this.pos.x, this.pos.z - 0.4));
+      slopeLift = Math.min(0.22, Math.max(gsx, gsz) * 0.35);
+    }
     // カメラのゆれOFF (酔い対策) のときは上下バウンドを止める
-    this.mesh.position.y = gy + (this.moving && options.camBob ? Math.abs(Math.sin(this.walkT)) * 0.09 : 0);
+    this.mesh.position.y = gy + slopeLift + (this.moving && options.camBob ? Math.abs(Math.sin(this.walkT)) * 0.09 : 0);
 
     // カメラ追従 (花火の夜に立ち止まると空を見上げる)。camYaw で 360度どこからでも
     const wantUp = lookUp && !this.moving ? 1 : 0;
@@ -124,6 +165,7 @@ export class Player {
       this.pos.z + this.camDist * cy,
     );
     this.clampCamY(desired);
+    this.resolveCamBlock(desired);
     this.camPos.lerp(desired, Math.min(1, dt * 4.5));
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(this.pos.x, this.pos.y + this.camLook + up * 12, this.pos.z);

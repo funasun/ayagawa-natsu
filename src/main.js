@@ -299,7 +299,7 @@ let currentAction = null;
 const gradeEl = document.getElementById('grade');
 function gradeColor(min, weather) {
   const rainy = weather === 'rain' || weather === 'storm';
-  if (min >= 1170 || min < 340) return 'rgba(38, 56, 116, 0.22)';   // 夜 (青は のこしつつ 沈めすぎない)
+  if (min >= 1170 || min < 340) return 'rgba(52, 72, 134, 0.13)';   // 夜 (青みは かるく。スマホでも 見える暗さに)
   if (min >= 1105) return 'rgba(125, 70, 140, 0.20)';               // マジックアワーの うす紫
   if (min >= 1030) return 'rgba(255, 115, 45, 0.21)';               // 夕方の茜
   if (min >= 980) return 'rgba(255, 172, 80, 0.14)';                // 16時すぎの 金色
@@ -403,13 +403,16 @@ function frame(forcedDt) {
   else if (mm >= 350 && mm <= 440) warm = Math.max(0, 1 - Math.abs(mm - 395) / 45) * 0.28;
   const rainy = gameClock.weather === 'rain' || gameClock.weather === 'storm';
   post.setWarm(warm * (rainy ? 0.4 : 1));
-  // 昼らしさ: 夜は ミルキー持ち上げ/暖色かぶりを 弱めて 青い夜をまもる (0.15〜1)
+  // 昼らしさ: 夜は ミルキー持ち上げ/暖色かぶりを 弱めて 青い夜をまもる (0.26〜1)
   let dayAmt = 1;
   if (mm < 345) dayAmt = (mm - 295) / 50;            // 未明 → 夜明け
   else if (mm > 1140) dayAmt = 1 - (mm - 1140) / 55; // 日没 → 夜
-  post.setDay(0.15 + 0.85 * Math.min(1, Math.max(0, dayAmt)));
+  post.setDay(0.26 + 0.74 * Math.min(1, Math.max(0, dayAmt)));
   post.render(scene, camera, performance.now() * 0.001);
 }
+
+// 起動時に すべてのシェーダを さきにコンパイル (視点を回した瞬間の ひっかかり対策)
+renderer.compile(scene, camera);
 
 renderer.setAnimationLoop(() => frame());
 

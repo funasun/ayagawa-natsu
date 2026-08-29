@@ -19,7 +19,7 @@ export function buildTakamatsu(scene) {
   const addOccluder = (obj, x, z, r, topY) => {
     const mats = new Set();
     obj.traverse((o) => { if (o.isMesh) mats.add(o.material); });
-    occluders.push({ x: TK.x + x, z: TK.z + z, r, topY, mats: [...mats], fade: 1 });
+    occluders.push({ obj, x: TK.x + x, z: TK.z + z, r, topY, mats: [...mats], fade: 1 });
   };
 
   // 地面 (アスファルトと歩道)

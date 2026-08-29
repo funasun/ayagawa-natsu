@@ -10,13 +10,21 @@ const KEYS = [
 const WEATHER_MIX = { sunny: [0, 0], cloudy: [0.55, 0.25], rain: [0.78, 0.5], storm: [0.9, 0.65] };
 const GRAY = new THREE.Color(0x93a1ab);
 const DARK = new THREE.Color(0x4d565e);
+// 毎フレームの new を さけるための 使いまわし色 (GCひっかかり対策)
+const WHITE = new THREE.Color(0xffffff);
+const MOON_TINT = new THREE.Color(0x9db8e8);
+const TOP_BLUE = new THREE.Color(0x2f6fc4);
+const HAZE_WHITE = new THREE.Color(0xeef5f4);
+const HAZE_WARM = new THREE.Color(0xf4ecd8);
+const CLOUD_DUSK = new THREE.Color(0xff7a40);
+const TMP_C = new THREE.Color();
 
 function skyColorAt(min) {
   const c = new THREE.Color();
   for (let i = 0; i < KEYS.length - 1; i++) {
     const [t0, c0] = KEYS[i], [t1, c1] = KEYS[i + 1];
     if (min >= t0 && min <= t1) {
-      c.set(c0).lerp(new THREE.Color(c1), (min - t0) / (t1 - t0));
+      c.set(c0).lerp(TMP_C.set(c1), (min - t0) / (t1 - t0));
       return c;
     }
   }
@@ -156,10 +164,10 @@ export class Sky {
     // ドームの色
     const top = horizon.clone();
     if (night > 0.5) top.multiplyScalar(0.45);
-    else top.lerp(new THREE.Color(0x2f6fc4), (0.4 + sunDay * 0.4) * (1 - grayMix * 0.7));
+    else top.lerp(TOP_BLUE, (0.4 + sunDay * 0.4) * (1 - grayMix * 0.7));
     this.uniforms.bottomColor.value.copy(horizon);
     // 真夏の地平線は白っぽく霞む
-    if (night < 0.5) this.uniforms.bottomColor.value.lerp(new THREE.Color(0xeef5f4), sunDay * 0.5 * (1 - grayMix));
+    if (night < 0.5) this.uniforms.bottomColor.value.lerp(HAZE_WHITE, sunDay * 0.5 * (1 - grayMix));
     this.uniforms.topColor.value.copy(top);
     this.dome.position.set(playerPos.x, 0, playerPos.z);
 
@@ -170,7 +178,7 @@ export class Sky {
     // 夏の日中は とおくの山なみが 白く あたたかく 霞む (真夏の 遠景の ノスタルジー)。
     // 夕方は 茜色に とけて 霞む。
     const dayHaze = sunDay * (weather === 'sunny' ? 1 : weather === 'cloudy' ? 0.55 : weather === 'rain' ? 0.2 : 0.1);
-    this.scene.fog.color.copy(horizon).lerp(new THREE.Color(0xf4ecd8), dayHaze * 0.5);
+    this.scene.fog.color.copy(horizon).lerp(HAZE_WARM, dayHaze * 0.5);
     this.scene.fog.near = (weather === 'storm' ? 40 : weather === 'rain' ? 65 : 110 - w2 * 45) - dayHaze * 12;
     this.scene.fog.far = (weather === 'storm' ? 180 : weather === 'rain' ? 240 : 380 - w2 * 90) - dayHaze * 70;
 
@@ -184,10 +192,17 @@ export class Sky {
     );
     this.sunTarget.position.copy(playerPos);
     const wLight = weather === 'storm' ? 0.25 : weather === 'rain' ? 0.4 : weather === 'cloudy' ? 0.7 : 1;
-    this.sun.intensity = (0.7 + sunDay * 1.7 + w2 * 0.5) * wLight * (1 - night * 0.85);
-    this.sun.color.setHSL(0.10 - w2 * 0.055, 0.5 + w2 * 0.4, 0.75 - w2 * 0.16);
-    this.hemi.intensity = (0.62 + sunDay * 0.55) * (weather === 'storm' ? 0.5 : 1) * (1 - night * 0.5);
-    this.hemi.color.copy(horizon).lerp(new THREE.Color(0xffffff), 0.45);
+    // 夜は「月あかり」に交代 — 青白い ひかりで、くらくても ちゃんと 見える夜に
+    this.sun.intensity = Math.max((0.7 + sunDay * 1.7 + w2 * 0.5) * wLight * (1 - night * 0.85), night * 0.55 * wLight);
+    if (night > 0.55) {
+      this.sun.color.setHSL(0.6, 0.22, 0.74); // 月光の 青白
+      this.sun.position.set(playerPos.x + 42, 74, playerPos.z + 46); // 高い月 = みじかい影
+    } else {
+      this.sun.color.setHSL(0.10 - w2 * 0.055, 0.5 + w2 * 0.4, 0.75 - w2 * 0.16);
+    }
+    this.hemi.intensity = (0.62 + sunDay * 0.55) * (weather === 'storm' ? 0.5 : 1) * (1 - night * 0.34);
+    this.hemi.color.copy(horizon).lerp(WHITE, 0.45);
+    if (night > 0) this.hemi.color.lerp(MOON_TINT, night * 0.5); // 夜のそらの 青白い てり返し
     this.hemi.groundColor.setHSL(0.22, 0.3, 0.22 + sunDay * 0.12);
 
     // 太陽グロー
@@ -213,7 +228,7 @@ export class Sky {
         if (o.material) {
           o.material.emissiveIntensity = 0.2 + sunDay * 0.25 + w2 * 0.3;
           o.material.color.copy(cloudTint);
-          o.material.emissive.setHex(0x9aa4b0).lerp(new THREE.Color(0xff7a40), w2 * 0.8);
+          o.material.emissive.setHex(0x9aa4b0).lerp(CLOUD_DUSK, w2 * 0.8);
         }
       });
     }
