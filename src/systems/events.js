@@ -763,6 +763,11 @@ export class EventSystem {
       list.push({ x: 114.5, z: 19.5, r: 2.4, label: 'えんがわに こしかける', action: () => this.engawaRest() });
     }
 
+    // ひまわり畑の そえぎ (けんかの けりを つける ばしょ)。あかるいうちなら いつでも
+    if (s.flags.kenkaKenta && !s.flags.kenkaDone && c.min >= 380 && c.min < 1140) {
+      list.push({ x: 20.5, z: 29.5, r: 3.0, label: 'ひまわり畑を のぞく', action: () => this.soegi() });
+    }
+
     // 竹やぶのひみつきち (ケンタに さそわれるまでは たちいりきんし)
     if (s.flags.kentaBase) {
       list.push({ x: -13.8, z: -76.2, r: 2.4, label: 'ひみつきちで すごす', action: () => this.himitsukichi() });
@@ -1420,6 +1425,26 @@ export class EventSystem {
     this.audio.sfx('splash');
     this.ui.toast('ようけ あそんだ! ……くちびるが ちょっと むらさきに なっとる');
     logEvent(s, 'かわであそんだ');
+  }
+
+  // ひまわりの そえぎ ―― ことばの ない 仲なおり
+  async soegi() {
+    const st = this.state;
+    st.flags.kenkaDone = true;
+    st.friend.kenta = (st.friend.kenta || 0) + 2;
+    st.friend.mina = (st.friend.mina || 0) + 2;
+    await this.ui.showStory([
+      'ひまわり畑の はしっこに、しゃがみこんどる せなかが あった。<br><br>……ケンタや。',
+      '竹の ぼうを ちいさい ナイフで けずって、<br>おれた ひまわりの くきに、そっと そえとる。<br><br>ひもを なんべんも まきなおしては、<br>ぶきような 手つきで むすびなおしとる。',
+      '「……ひみつきちの 竹、つこてん。いちばん ええやつ。」<br><br>「これで つながるか わからんけどな。<br>……なんも せんのは、いやや。」',
+      'そのとき、うしろで じゃりの おとが した。<br><br>ミナが 立っとった。<br>じょうろを もったまま、うごかんと。',
+      'ケンタは あわてて 立ちあがった。<br>「ち、ちがう! これは、その……!」<br><br>ミナは なんも いわんと ケンタの よこに しゃがんで、<br>ひもの はしを つまんで、きゅっと むすびなおした。',
+      '「……むすびかた、へたくそ。」<br><br>「う、うるさいわ!」<br><br>ふたりとも、まだ ちょっと そっぽを むいとる。<br>でも、そえぎは まっすぐ 立っとった。',
+      'ひまわりは、おれた ところから 上だけ、<br>まだ ちゃんと 空を むいとる。<br><br>――なおるかは、わからん。<br>それでも ふたりは、ならんで しゃがんどった。',
+    ]);
+    this.audio.sfx('catch');
+    this.ui.toast('ケンタと ミナが なかなおりした', 'gold');
+    logEvent(st, 'ケンタとミナがなかなおりした');
   }
 
   // お盆の迎え火 (13日の夕方): じいちゃんが「帰ってくる」よる

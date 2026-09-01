@@ -391,6 +391,9 @@ function frame(forcedDt) {
     else if (state.flags.rodStory && state.day >= 16 && !state.flags.nushiHint) guide = 'げんじいが なにか おしえたそうに しとる (ため池)';
     else if (state.flags.nushiHint && !state.flags.nushiCaught) guide = 'はれ/くもりの ゆうがた、ため池に「ぬしさま」の かげが 出る';
     else if (state.flags.nushiCaught && !state.flags.nushiTold) guide = 'ぬしさまの こと、げんじいに ほうこくしよう';
+    else if (state.flags.kenkaStart && !state.flags.kenkaMina) guide = 'ミナに はなしを きいてみよう (ケンタと なにか あったみたい)';
+    else if (state.flags.kenkaMina && !state.flags.kenkaKenta) guide = 'ひまわりの ほんとうの わけを、ケンタに おしえてあげよう';
+    else if (state.flags.kenkaKenta && !state.flags.kenkaDone) guide = 'あかるいうちに、ひまわり畑を のぞいてみよう';
     if (!guide) guide = DAY_GUIDE[state.day] || null; // 日がわりの「きょうの めあて」
     ui.setGuide(guide);
   }
