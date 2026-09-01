@@ -316,6 +316,32 @@ export const NPCS = [
           '……なあ。おぼんが、ずーっと つづいたら ええのにな。',
         ];
       }
+      // 見おくりの日 (16日の夕方) を とりのがしても、この はなしは かならず きける。
+      // ものがたりが「一発しょうぶ」で 永久に きえてしまわないように
+      if (c.day >= 17 && s.flags.kentaPapa2 && !s.flags.kentaPapa3) {
+        s.flags.kentaPapa3 = true;
+        s.friend.kenta = (s.friend.kenta || 0) + 2;
+        return [
+          '……なあ。おれ、まえに とうちゃんの こと ゆうたやろ。',
+          'おぼんの さいごの日にな、駅まで 見おくりに いってん。ひとりで。',
+          'ホームで「いってらっしゃい」ゆうつもりやったんやけど、',
+          'でんしゃの ドアが しまった とたん、……なんか、ぐしゃぐしゃに なってもうて。',
+          '…………だれにも ゆうとらんかったんやけど。',
+          'なんでか、おまえには ゆうても ええかなって おもてん。',
+          '(ケンタは そっぽを むいて、ぼうしを ふかく かぶりなおした)',
+        ];
+      }
+      // おぼんに 会えんかった場合の 追いつき (とうちゃんは もう 東京へ もどっとる)
+      if (c.day >= 16 && !s.flags.kentaPapa2) {
+        s.flags.kentaPapa1 = true;
+        s.flags.kentaPapa2 = true;
+        return [
+          'おう。……なあ、おぼんの あいだ、どこ おってん。さがしたんやぞ。',
+          'うちの とうちゃんな、おぼんだけ 東京から 帰ってきとってん。',
+          'キャッチボールも したし、にわで はなびも やった。……もう いってもうたけどな。',
+          'つぎ 会えるんは しょうがつや。……まあ、べつに? なれとるし?',
+        ];
+      }
       if (c.day >= 10 && c.day <= 12 && c.phase === 'evening' && !s.flags.kentaPapa1) {
         s.flags.kentaPapa1 = true;
         return [
@@ -418,7 +444,9 @@ export const NPCS = [
         'ひまわり、きれいやろ? うちが 水やり しとるんよ。',
       ];
       // ミナの弧: てんこうしていった しんゆう・ユキちゃんと、ふたりで うえた ひまわり
-      if (c.friend >= 4 && !s.flags.minaYuki1 && c.phase !== 'night' && c.event !== 'matsuri' && c.event !== 'gakusai' && c.day < 27) {
+      // なつの おわりが ちかづいたら、なかよし度が たりんくても うちあけてくれる
+      // (おそくに 話しかけはじめても、ユキちゃんの はなしが きえてしまわないように)
+      if ((c.friend >= 4 || c.day >= 24) && !s.flags.minaYuki1 && c.phase !== 'night' && c.event !== 'matsuri' && c.event !== 'gakusai') {
         s.flags.minaYuki1 = true;
         return [
           'なあ、この ひまわりな。うち ひとりで うえたんと ちがうんよ。',
@@ -428,7 +456,7 @@ export const NPCS = [
           'せやけん うち、まいにち 水やり しとるん。さいたよって、おしえたいけんな。',
         ];
       }
-      if (c.friend >= 7 && s.flags.minaYuki1 && !s.flags.minaYuki2 && c.phase !== 'night' && c.event !== 'matsuri' && c.event !== 'gakusai') {
+      if ((c.friend >= 7 || c.day >= 27) && s.flags.minaYuki1 && !s.flags.minaYuki2 && c.phase !== 'night' && c.event !== 'matsuri' && c.event !== 'gakusai') {
         s.flags.minaYuki2 = true;
         s.friend.mina = (s.friend.mina || 0) + 1;
         return [

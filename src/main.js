@@ -203,6 +203,7 @@ async function sleep(auto) {
   if (state.day >= 31) {
     await ui.fade(true, 1600);
     await events.dinner(); // さいごの晩餐 — はじめての夜とおなじ ごちそうと、ばあちゃんの手紙
+    await ui.showDiary(gameClock); // なつやすみ さいごの にっき (31ページめ。アルバムを かんせいさせる)
     audio.setScene({ phase: 'night', weather: 'sunny', festivalNight: false });
     audio.sfx('train');
     await ui.showEnding();
