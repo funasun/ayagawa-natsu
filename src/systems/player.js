@@ -21,6 +21,7 @@ export class Player {
     this.running = false;
     this.camPos = new THREE.Vector3();
     this.lookUpT = 0;
+    this.vistaT = 0; // 絵になる場所で 立ちどまっている 時間
     // カメラの向き (0 = 南から北をみる)。ドラッグや Q/R キーで 360度まわせる
     this.camYaw = 0;
     // 僕夏ふうの「低く・寄った・見下ろしすぎない」追従カメラ。
@@ -166,9 +167,23 @@ export class Player {
     );
     this.clampCamY(desired);
     this.resolveCamBlock(desired);
-    this.camPos.lerp(desired, Math.min(1, dt * 4.5));
-    this.camera.position.copy(this.camPos);
-    this.camera.lookAt(this.pos.x, this.pos.y + this.camLook + up * 12, this.pos.z);
+    // 絵になる場所: 立ちどまると、一枚絵のような きまった構図へ すっと 切りかわる (僕夏の 固定カメラの 味)
+    let vista = null;
+    const vs = this.world.vistaSpots;
+    if (vs && !this.world.indoor && !this.moving && !lookUp) {
+      for (const v of vs) if (Math.hypot(v.x - this.pos.x, v.z - this.pos.z) < v.r) { vista = v; break; }
+    }
+    this.vistaT = vista ? this.vistaT + dt : 0;
+    if (vista && this.vistaT > 1.2) {
+      desired.set(vista.cam.x, vista.cam.y, vista.cam.z);
+      this.camPos.lerp(desired, Math.min(1, dt * 1.6));
+      this.camera.position.copy(this.camPos);
+      this.camera.lookAt(vista.look.x, vista.look.y, vista.look.z);
+    } else {
+      this.camPos.lerp(desired, Math.min(1, dt * 4.5));
+      this.camera.position.copy(this.camPos);
+      this.camera.lookAt(this.pos.x, this.pos.y + this.camLook + up * 12, this.pos.z);
+    }
 
     // カメラをふさぐ建物を半透明にする
     if (this.world.updateOcclusion) this.world.updateOcclusion(this.pos, this.camera.position, dt);

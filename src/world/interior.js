@@ -95,6 +95,11 @@ export function buildInterior(scene) {
   md(new THREE.BoxGeometry(0.85, 0.09, 0.85), smat(0x9a4a3c), 0, 0.05, 1.85).rotation.y = 0.1;
   md(new THREE.BoxGeometry(0.85, 0.09, 0.85), smat(0x8a5a3c), -1.75, 0.05, 0.3).rotation.y = -0.15;
   md(new THREE.BoxGeometry(0.85, 0.09, 0.85), smat(0x6a7a54), 1.75, 0.05, 0.3).rotation.y = 0.2;
+  // 黒電話 (テレビの よこの 小さな 台のうえ。ダイヤル式)
+  md(new THREE.BoxGeometry(0.5, 0.72, 0.4), smat(0x5a4632), -3.7, 0.36, -3.3);
+  md(new THREE.CylinderGeometry(0.15, 0.17, 0.12, 12), smat(0x151515), -3.7, 0.78, -3.3);
+  md(new THREE.CylinderGeometry(0.1, 0.1, 0.02, 12), smat(0x3a3a3a), -3.7, 0.85, -3.3);
+  md(new THREE.BoxGeometry(0.28, 0.06, 0.08), smat(0x151515), -3.7, 0.9, -3.3);
   // テレビ (ブラウン管)
   md(new THREE.BoxGeometry(1.3, 0.5, 1.0), wood, -2.0, 0.25, -3.55);
   md(new THREE.BoxGeometry(1.1, 0.85, 0.85), smat(0x7a6a52), -2.0, 0.95, -3.55);
@@ -187,6 +192,7 @@ export function buildInterior(scene) {
       { x: -8.75, z: -0.5, hx: 0.45, hz: 0.8 },  // 食器棚
       { x: 0, z: 0.3, hx: 1.1, hz: 1.1 },        // ちゃぶ台
       { x: -2.0, z: -3.55, hx: 0.7, hz: 0.6 },   // テレビ
+      { x: -3.7, z: -3.3, hx: 0.3, hz: 0.25 },   // 黒電話の 台
       { x: -2.3, z: 1.7, hx: 0.42, hz: 0.42 },   // 扇風機
       { x: 2.75, z: -3.3, hx: 0.72, hz: 1.15 },  // 階段
       { x: 6.2, z: -3.7, hx: 0.68, hz: 0.6 },    // 仏壇

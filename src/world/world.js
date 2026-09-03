@@ -1895,6 +1895,67 @@ export function buildWorld(scene) {
     world.gorge = { camp: CAMP, campfire: CF, yado: YADO, ashiyu: ASHIYU, fuketsu: FUKETSU, fuchi: { x: FUCHI_X, z: rc(FUCHI_X) } };
   }
 
+  // =====================================================================
+  // 昭和の なつの 小物 (フェーズ9): えんがわの すいかと 蚊取り線香、ホーロー看板
+  // =====================================================================
+  {
+    // ばあちゃんちの えんがわ さき: くつぬぎ石 + 蚊取り線香 (ぶたの 入れもの) + たらいに うかぶ すいか
+    const ishi = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.22, 0.6), smat(0x8a8478));
+    ishi.position.set(112.6, gy(112.6, 20.6) + 0.11, 20.6);
+    scene.add(ishi);
+    const buta = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), smat(0x9fb8a8));
+    buta.scale.set(1.3, 0.85, 1);
+    buta.position.set(112.6, gy(112.6, 20.6) + 0.34, 20.6);
+    scene.add(buta);
+    const senko = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.012, 6, 16), smat(0x3f5a3a));
+    senko.rotation.x = -Math.PI / 2;
+    senko.position.set(112.6, gy(112.6, 20.6) + 0.44, 20.6);
+    scene.add(senko);
+    const tarai = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.34, 0.26, 14, 1, true), smat(0x9aa2a8, { side: THREE.DoubleSide }));
+    tarai.position.set(111.4, gy(111.4, 21.9) + 0.13, 21.9);
+    scene.add(tarai);
+    const mizu = new THREE.Mesh(new THREE.CircleGeometry(0.4, 14), smat(0x7fb6c8, { transparent: true, opacity: 0.8 }));
+    mizu.rotation.x = -Math.PI / 2;
+    mizu.position.set(111.4, gy(111.4, 21.9) + 0.22, 21.9);
+    scene.add(mizu);
+    const suika = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), smat(0x2f6b2a));
+    suika.scale.set(1, 0.9, 1);
+    suika.position.set(111.45, gy(111.4, 21.9) + 0.3, 21.85);
+    scene.add(suika);
+    for (let i = 0; i < 6; i++) { // すいかの しま
+      const st = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.34, 0.02), smat(0x1c3f1a));
+      st.position.set(111.45 + Math.cos(i * 1.05) * 0.19, gy(111.4, 21.9) + 0.3, 21.85 + Math.sin(i * 1.05) * 0.19);
+      st.rotation.y = -i * 1.05;
+      scene.add(st);
+    }
+    addCircle(111.4, 21.9, 0.45);
+    addRect(112.6, 20.6, 0.45, 0.3);
+    // ホーロー看板 (だがしやと うどんやの まえの かべ)
+    for (const [sx, sy, sz, txt, bg, fg, w, h] of [
+      [-64.6, 1.55, 19.55, 'あやがわ サイダー', '#1f4f9e', '#f8f1dc', 2.0, 0.62],
+      [-61.4, 2.3, 19.55, 'ぶたの かとりせんこう', '#2f7a4a', '#f4e26a', 2.1, 0.6],
+      [-49.6, 1.75, 19.55, 'つめたい ラムネ', '#c8392b', '#fff5e0', 1.9, 0.6],
+    ]) {
+      const sg = makeSignBoard(txt, { bg, fg, w, h });
+      sg.position.set(sx, gy(sx, 17.5) + sy, sz);
+      scene.add(sg);
+    }
+  }
+  // 絵になる場所: 立ちどまると 一枚絵の 構図に (player.js が よむ)
+  {
+    const rc = riverCenterZ;
+    const V = (x, z, r, cam, look) => ({ x, z, r, cam: { x: cam[0], y: cam[1], z: cam[2] }, look: { x: look[0], y: look[1], z: look[2] } });
+    world.vistaSpots = [
+      V(BRIDGE_X, rc(BRIDGE_X), 2.6, [BRIDGE_X + 9, gy(BRIDGE_X + 9, rc(BRIDGE_X) + 12) + 5.5, rc(BRIDGE_X) + 12], [BRIDGE_X - 4, 1.2, rc(BRIDGE_X) - 10]),
+      V(LOOKOUT.x, LOOKOUT.z, 2.4, [LOOKOUT.x - 7, gy(LOOKOUT.x, LOOKOUT.z) + 8, LOOKOUT.z + 9], [POND.x, 0, POND.z]),
+      V(world.summit.x, world.summit.z, 3.0, [world.summit.x + 8, gy(world.summit.x, world.summit.z) + 6.5, world.summit.z + 10], [-20, 4, -110]),
+      V(20.5, 30, 2.6, [13.5, gy(13.5, 36) + 3.0, 36], [22, 1.4, 27]),
+      V(FUCHI_X, rc(FUCHI_X) + 9, 2.8, [FUCHI_X + 10, gy(FUCHI_X + 10, rc(FUCHI_X) + 12) + 5, rc(FUCHI_X) + 12], [FUCHI_X - 9, gy(FUCHI_X, rc(FUCHI_X)) - 1, rc(FUCHI_X)]),
+      V(SATO_BUS.x - 2.2, SATO_BUS.z + 0.5, 2.4, [SATO_BUS.x - 9, gy(SATO_BUS.x - 9, SATO_BUS.z + 11) + 4.2, SATO_BUS.z + 11], [SATO_BUS.x + 2, 1.5, SATO_BUS.z]),
+      V(HOKORA.x, HOKORA.z - 3, 2.4, [HOKORA.x - 8, gy(HOKORA.x - 8, HOKORA.z - 12) + 6, HOKORA.z - 12], [HOKORA.x, gy(HOKORA.x, HOKORA.z) + 1.4, HOKORA.z]),
+    ];
+  }
+
   // 木の樹冠のカメラ遮蔽円柱を、結合まえに ワールド座標で あつめる
   {
     scene.updateMatrixWorld(true);

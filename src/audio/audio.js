@@ -257,6 +257,16 @@ export class AudioEngine {
       case 'sleep':
         [784, 659, 523].forEach((f, i) => this.tone(f, 0.5, { vol: 0.12, when: i * 0.35 }));
         break;
+      case 'nyaa': // ねこ: にゃーん (すべる 2音)
+        this.tone(760, 0.32, { type: 'sine', vol: 0.11, glide: 560 });
+        this.tone(640, 0.22, { type: 'sine', vol: 0.07, when: 0.3, glide: 520 });
+        break;
+      case 'koke': // にわとり: コケコッ
+        this.tone(880, 0.09, { type: 'square', vol: 0.05 });
+        this.tone(740, 0.09, { type: 'square', vol: 0.05, when: 0.11 });
+        this.tone(980, 0.16, { type: 'square', vol: 0.06, when: 0.22, glide: 700 });
+        this.noiseBurst(2200, 0.06, { vol: 0.05, when: 0.2 });
+        break;
       case 'page':
         this.noiseBurst(3000, 0.12, { vol: 0.08 });
         break;

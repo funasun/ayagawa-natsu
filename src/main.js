@@ -11,6 +11,7 @@ import { Player } from './systems/player.js';
 import { BugSystem } from './systems/bugs.js';
 import { FishingSystem } from './systems/fishing.js';
 import { NpcSystem } from './systems/npc.js';
+import { CritterSystem } from './systems/critters.js';
 import { EventSystem } from './systems/events.js';
 import { AudioEngine } from './audio/audio.js';
 import { UI } from './ui/ui.js';
@@ -162,6 +163,7 @@ const player = new Player(scene, world, input, camera);
 const bugs = new BugSystem(scene, world, state, gameClock, ui, audio);
 const fishing = new FishingSystem(scene, world, state, gameClock, ui, audio);
 const npcs = new NpcSystem(scene, world, state, gameClock, ui, audio);
+const critters = new CritterSystem(scene, world, state, gameClock, ui, audio); // ねこ・にわとり・蚊取り線香の けむり
 const events = new EventSystem(world, state, gameClock, ui, audio, () => sleep(false));
 events.player = player; // update() 前に warpTo (オープニング) が走っても大丈夫なように
 
@@ -354,6 +356,7 @@ function frame(forcedDt) {
       bugs.update(dt, player, prompts);
       npcs.hideKids = !!events.hide; // かくれんぼ中はふたりを非表示に
       npcs.update(dt, player, prompts);
+      critters.update(dt, player, prompts);
     }
     events.update(dt, player, prompts);
     if (!world.indoor) fishing.update(dt, player, fishing.active ? [] : prompts, fishing.active ? interactHit : false);
@@ -454,7 +457,7 @@ boot();
 
 // デバッグ用 (コンソールから時間・日付を動かせる)
 window.__game = {
-  state, player, npcs, bugs, fishing, events, ui, renderer, camera, effects, post,
+  state, player, npcs, bugs, fishing, events, ui, renderer, camera, effects, post, critters,
   step: (dt = 0.016) => frame(dt),
   get clock() { return gameClock; },
   // 実機なしで 強制よこ画面を確認するためのフック
