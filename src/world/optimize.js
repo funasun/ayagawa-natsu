@@ -39,9 +39,10 @@ export function optimizeStatic(scene, world) {
     const m = o.material;
     if (!m || Array.isArray(m)) return null;
     if (!m.isMeshLambertMaterial && !m.isMeshBasicMaterial) return null;
-    if (m.transparent || (m.alphaTest || 0) > 0) return null; // 透明は 前後関係が くずれる
+    if (m.transparent) return null; // 透明は 前後関係が くずれる (アルファ抜きは ぬってよい)
     return [
-      m.type, m.map ? m.map.uuid : '',
+      m.type, m.map ? m.map.uuid : '', m.alphaTest || 0,
+      m.bumpMap ? m.bumpMap.uuid : '', m.bumpScale ?? 1,
       m.emissive ? m.emissive.getHex() : 0, m.emissiveIntensity ?? 1,
       m.side, m.flatShading ? 1 : 0, m.fog === false ? 0 : 1,
       m.depthWrite ? 1 : 0, m.depthTest ? 1 : 0, m.blending, m.toneMapped ? 1 : 0,
@@ -64,6 +65,22 @@ export function optimizeStatic(scene, world) {
       col[i * 3 + 1] = m.color.g * (src ? src.getY(i) : 1);
       col[i * 3 + 2] = m.color.b * (src ? src.getZ(i) : 1);
     }
+    // 接地の くらがり (かんたんな 頂点AO): 地面に ちかい 頂点ほど すこし くらく → ものが 地面に「のる」
+    // (地面の板・道・田んぼのような たいらで ひろい ものは のぞく)
+    if (world.groundY && n < 20000) {
+      g.computeBoundingBox();
+      const bb = g.boundingBox;
+      const hgt = bb.max.y - bb.min.y, ext = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) || 1;
+      if (o.castShadow || hgt / ext > 0.05) {
+        const pos = g.attributes.position;
+        for (let i = 0; i < n; i++) {
+          const h = pos.getY(i) - world.groundY(pos.getX(i), pos.getZ(i));
+          const t = Math.min(1, Math.max(0, h / 1.6));
+          const f = 0.62 + 0.38 * t * t * (3 - 2 * t);
+          col[i * 3] *= f; col[i * 3 + 1] *= f; col[i * 3 + 2] *= f;
+        }
+      }
+    }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     // マテリアルに テクスチャがなければ uv系は 捨てて 属性を そろえる
     if (!m.map) { g.deleteAttribute('uv'); if (g.attributes.uv1) g.deleteAttribute('uv1'); }
@@ -82,6 +99,8 @@ export function optimizeStatic(scene, world) {
       blending: m.blending, toneMapped: m.toneMapped,
     });
     if (nm.emissive && m.emissive) { nm.emissive.copy(m.emissive); nm.emissiveIntensity = m.emissiveIntensity; }
+    if (m.alphaTest) nm.alphaTest = m.alphaTest;
+    if (m.bumpMap && nm.isMeshLambertMaterial) { nm.bumpMap = m.bumpMap; nm.bumpScale = m.bumpScale; }
     return nm;
   };
 
@@ -93,6 +112,10 @@ export function optimizeStatic(scene, world) {
       if (!g) continue;
       const mesh = new THREE.Mesh(g, matOf(e));
       mesh.castShadow = e.cast; mesh.receiveShadow = e.recv; mesh.renderOrder = e.ro;
+      // アルファ抜きの 葉は、影も 葉の かたちに ぬく
+      if (mesh.material.alphaTest > 0 && mesh.material.map) {
+        mesh.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: mesh.material.map, alphaTest: mesh.material.alphaTest });
+      }
       mesh.matrixAutoUpdate = false;
       mesh.userData.noMerge = true;
       for (const o of e.items) o.removeFromParent();

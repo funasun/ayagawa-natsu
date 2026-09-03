@@ -374,9 +374,8 @@ export function buildWorld(scene) {
 
   // ---------- 綾川 (水面は岸より低い。上流ほど高く、下流へ下る) ----------
   const water = strip(riverPts(), RIVER_HALF * 2 + 1, 0, 0xffffff, (px) => waterLevel(px));
-  water.material.map = waterTex();
-  water.material.transparent = true;
-  water.material.opacity = 0.92;
+  // 川は Phong で 日ざしが きらっと はねる (Lambert には ハイライトが ない)
+  water.material = new THREE.MeshPhongMaterial({ map: waterTex(), transparent: true, opacity: 0.9, shininess: 90, specular: 0x9fc4d4 });
   scene.add(water);
   world.riverWaterMat = water.material;
   // 川原の石 (水ぎわに半分つかる)
@@ -420,7 +419,7 @@ export function buildWorld(scene) {
   scene.add(reeds);
 
   // ---------- 北条池 (陶の大ため池) ----------
-  const pond = new THREE.Mesh(new THREE.CircleGeometry(POND.r + 1.2, 32), smat(0x4f8aa8, { transparent: true, opacity: 0.9 }));
+  const pond = new THREE.Mesh(new THREE.CircleGeometry(POND.r + 1.2, 32), new THREE.MeshPhongMaterial({ color: 0x4f8aa8, transparent: true, opacity: 0.9, shininess: 80, specular: 0x9fc4d4 }));
   pond.rotation.x = -Math.PI / 2;
   pond.position.set(POND.x, POND_Y, POND.z);
   scene.add(pond);

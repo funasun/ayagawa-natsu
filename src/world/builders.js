@@ -29,60 +29,153 @@ const memoTex = (key, make) => {
   return texCache.get(key);
 };
 
-export const kawaraTex = (base = '#4a5560') => memoTex(`kawara|${base}`, () => canvasTex(64, (ctx, s) => {
+// 葉のふさ: まんなかほど 密で、ふちは すきまだらけ (アルファ抜きの カードに はる)
+export const leafTex = () => memoTex('leaf', () => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, 256, 256);
+  for (let i = 0; i < 560; i++) {
+    const a = Math.random() * Math.PI * 2, d = Math.pow(Math.random(), 0.62) * 118;
+    const x = 128 + Math.cos(a) * d, y = 128 + Math.sin(a) * d * 0.9;
+    const g = 128 + Math.random() * 100, r = 4 + Math.random() * 7;
+    ctx.fillStyle = `rgba(${(g * 0.56) | 0},${g | 0},${(g * 0.36) | 0},${0.9 + Math.random() * 0.1})`;
+    ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.55, a, 0, 7); ctx.fill();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+});
+export const cirrusTex = () => memoTex('cirrus', () => {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, 512, 256);
+  ctx.filter = 'blur(3px)';
+  for (let i = 0; i < 46; i++) {
+    const y = 20 + Math.random() * 216, len = 120 + Math.random() * 300, x0 = Math.random() * 512 - 100;
+    ctx.strokeStyle = `rgba(255,255,255,${0.05 + Math.random() * 0.12})`;
+    ctx.lineWidth = 2 + Math.random() * 9;
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.quadraticCurveTo(x0 + len * 0.5, y - 10 + Math.random() * 20, x0 + len, y + (Math.random() - 0.5) * 14); ctx.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+});
+
+export const kawaraTex = (base = '#4a5560') => memoTex(`kawara|${base}`, () => canvasTex(128, (ctx, s) => {
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, s, s);
-  for (let y = 0; y < s; y += 8) {
-    ctx.fillStyle = 'rgba(0,0,0,0.28)';
-    ctx.fillRect(0, y + 6, s, 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.10)';
-    ctx.fillRect(0, y, s, 1);
-    for (let x = (y / 8) % 2 ? 8 : 0; x < s; x += 16) {
+  const tw = 32, th = 16;
+  for (let y = 0; y < s; y += th) {
+    const off = (y / th) % 2 ? tw / 2 : 0;
+    for (let x = -tw; x < s + tw; x += tw) {
+      const gx = x + off;
+      // 1まいの 瓦: 上は ひかり、下は かげ (まるみ)
+      const grad = ctx.createLinearGradient(0, y, 0, y + th);
+      grad.addColorStop(0, 'rgba(255,255,255,0.16)');
+      grad.addColorStop(0.55, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, 'rgba(0,0,0,0.34)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(gx, y, tw, th);
+      // つぎめ (たて) と かさなりの すじ (よこ)
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
+      ctx.fillRect(gx, y, 1.5, th);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(gx, y + th - 2, tw, 2);
+      // 瓦の さきの まるい かげ
       ctx.fillStyle = 'rgba(0,0,0,0.12)';
-      ctx.fillRect(x, y, 1, 8);
+      ctx.beginPath(); ctx.arc(gx + tw / 2, y + th - 1, 5, 0, Math.PI, true); ctx.fill();
     }
+  }
+  // つやの むら
+  for (let i = 0; i < 140; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.06})`;
+    ctx.fillRect(Math.random() * s, Math.random() * s, 3, 1);
   }
 }, [3, 2]));
 
-export const woodTex = (base = '#7a5a38') => memoTex(`wood|${base}`, () => canvasTex(64, (ctx, s) => {
+export const woodTex = (base = '#7a5a38') => memoTex(`wood|${base}`, () => canvasTex(128, (ctx, s) => {
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, s, s);
-  for (let x = 0; x < s; x += 6) {
-    ctx.fillStyle = `rgba(30,15,5,${0.1 + (x % 12 ? 0.06 : 0.16)})`;
-    ctx.fillRect(x, 0, 2, s);
+  // うねる 木目 (たてに ながれる)
+  for (let x = 0; x < s; x += 3) {
+    const w = 0.6 + Math.random() * 1.4;
+    ctx.strokeStyle = `rgba(30,15,5,${0.06 + Math.random() * 0.16})`;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    for (let y = 0; y <= s; y += 16) ctx.lineTo(x + Math.sin((y + x * 3) / 23) * 2.2, y);
+    ctx.stroke();
   }
-  for (let i = 0; i < 26; i++) {
-    ctx.fillStyle = 'rgba(35,18,6,0.25)';
-    ctx.fillRect(Math.random() * s, Math.random() * s, 1, 3 + Math.random() * 8);
+  // ふし (2〜3こ): 年輪の わ
+  const knots = 2 + Math.floor(Math.random() * 2);
+  for (let k = 0; k < knots; k++) {
+    const kx = 12 + Math.random() * (s - 24), ky = 12 + Math.random() * (s - 24);
+    for (let r = 7; r > 0; r -= 1.4) {
+      ctx.strokeStyle = `rgba(35,18,6,${0.12 + (7 - r) * 0.05})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(kx, ky, r * 0.7, r, 0.3, 0, 7); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(35,18,6,0.35)';
+    ctx.beginPath(); ctx.ellipse(kx, ky, 1.6, 2.4, 0.3, 0, 7); ctx.fill();
+  }
+  // 風化: 灰いろの しみと ささくれ
+  for (let i = 0; i < 60; i++) {
+    ctx.fillStyle = `rgba(200,190,170,${Math.random() * 0.08})`;
+    ctx.fillRect(Math.random() * s, Math.random() * s, 2, 6 + Math.random() * 18);
+  }
+  for (let i = 0; i < 40; i++) {
+    ctx.fillStyle = 'rgba(35,18,6,0.28)';
+    ctx.fillRect(Math.random() * s, Math.random() * s, 1, 3 + Math.random() * 10);
   }
 }, [2, 1]));
 
-export const plasterTex = () => memoTex('plaster', () => canvasTex(64, (ctx, s) => {
+export const plasterTex = () => memoTex('plaster', () => canvasTex(128, (ctx, s) => {
   ctx.fillStyle = '#f1e7d0';
   ctx.fillRect(0, 0, s, s);
-  for (let i = 0; i < 240; i++) {
+  // ざらつき
+  for (let i = 0; i < 1400; i++) {
     ctx.fillStyle = `rgba(150,130,95,${Math.random() * 0.12})`;
     ctx.fillRect(Math.random() * s, Math.random() * s, 2, 2);
   }
+  // 雨だれの しみ (うすく たれる)
+  for (let i = 0; i < 9; i++) {
+    const x = Math.random() * s, y0 = Math.random() * s * 0.5;
+    const grad = ctx.createLinearGradient(0, y0, 0, y0 + 40 + Math.random() * 50);
+    grad.addColorStop(0, 'rgba(120,100,70,0.16)');
+    grad.addColorStop(1, 'rgba(120,100,70,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y0, 3 + Math.random() * 6, 90);
+  }
+  // ひび
+  for (let i = 0; i < 5; i++) {
+    let x = Math.random() * s, y = Math.random() * s;
+    ctx.strokeStyle = 'rgba(90,75,55,0.35)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(x, y);
+    for (let k = 0; k < 6; k++) { x += (Math.random() - 0.5) * 14; y += 4 + Math.random() * 10; ctx.lineTo(x, y); }
+    ctx.stroke();
+  }
 }));
 
-export const grassTex = () => memoTex('grass', () => canvasTex(256, (ctx, s) => {
+export const grassTex = () => memoTex('grass', () => canvasTex(512, (ctx, s) => {
   ctx.fillStyle = '#6d9646';
   ctx.fillRect(0, 0, s, s);
   // 濃淡のまだら (土や日焼けのムラ)
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i < 360; i++) {
     const x = Math.random() * s, y = Math.random() * s;
     ctx.fillStyle = Math.random() < 0.5 ? 'rgba(70,105,45,0.25)' : 'rgba(160,150,90,0.14)';
     ctx.beginPath(); ctx.arc(x, y, 6 + Math.random() * 16, 0, 7); ctx.fill();
   }
   // 草の葉
-  for (let i = 0; i < 6500; i++) {
+  for (let i = 0; i < 26000; i++) {
     const g = 105 + Math.random() * 85;
     ctx.fillStyle = `rgba(${g * 0.52},${g},${g * 0.34},0.55)`;
     ctx.fillRect(Math.random() * s, Math.random() * s, 1, 2 + Math.random() * 3);
   }
   // クローバーぽい明るい点
-  for (let i = 0; i < 260; i++) {
+  for (let i = 0; i < 1000; i++) {
     ctx.fillStyle = 'rgba(150,190,95,0.35)';
     ctx.fillRect(Math.random() * s, Math.random() * s, 2, 2);
   }
@@ -126,17 +219,33 @@ export function makeTree(big = false, seed = 0) {
     br.rotation.set(Math.cos(i * 2.4 + seed) * 0.8, 0, -Math.sin(i * 2.4 + seed) * 0.8);
     g.add(br);
   }
-  // 葉のかたまり (色に深みのグラデーション)
+  // 葉のかたまり: くらい 芯 + 葉のカード (アルファ抜きの 板を 十字+水平に) で
+  // ふわっとした 樹冠に。色は 木ごとに すこしずつ ちがう
   const baseHue = 0.27 + rnd(3) * 0.05;
   const n = big ? 9 : 5;
   for (let i = 0; i < n; i++) {
     const r = (big ? 2.1 : 1.15) * s * (1 - (i / n) * 0.35) * (0.75 + rnd(i + 4) * 0.4);
-    const col = new THREE.Color().setHSL(baseHue, 0.5 + rnd(i + 9) * 0.14, 0.19 + (i / n) * 0.13 + rnd(i + 5) * 0.05);
-    const blob = m(new THREE.IcosahedronGeometry(r, 1), smat(col),
-      Math.sin(seed + i * 2.4) * r * 0.75, trunkH * 0.85 + (i % 3) * 0.8 * s + r * 0.4, Math.cos(seed * 2 + i * 1.7) * r * 0.75);
-    blob.scale.y = 0.82;
-    blob.castShadow = true;
-    g.add(blob);
+    const cx = Math.sin(seed + i * 2.4) * r * 0.75, cy = trunkH * 0.85 + (i % 3) * 0.8 * s + r * 0.4, cz = Math.cos(seed * 2 + i * 1.7) * r * 0.75;
+    const core = m(new THREE.IcosahedronGeometry(r * 0.62, 1), smat(new THREE.Color().setHSL(baseHue, 0.5, 0.16 + rnd(i + 5) * 0.04)), cx, cy, cz);
+    core.scale.y = 0.8;
+    core.castShadow = true;
+    g.add(core);
+    const tint = new THREE.Color().setHSL(baseHue + rnd(i + 9) * 0.02, 0.42 + rnd(i + 9) * 0.12, 0.52 + (i / n) * 0.12 + rnd(i + 5) * 0.06);
+    const cardMat = new THREE.MeshLambertMaterial({ map: leafTex(), color: tint, alphaTest: 0.5, side: THREE.DoubleSide });
+    const size = r * 2.7;
+    const cardGeo = new THREE.PlaneGeometry(size, size);
+    for (let k = 0; k < 3; k++) {
+      const card = m(cardGeo, cardMat, cx, cy, cz);
+      card.rotation.y = (k / 3) * Math.PI + rnd(i + k + 20) * 0.5;
+      card.rotation.z = (rnd(i + k + 30) - 0.5) * 0.3;
+      card.castShadow = true;
+      g.add(card);
+    }
+    const top = m(cardGeo, cardMat, cx, cy + r * 0.25, cz);
+    top.rotation.x = -Math.PI / 2 + (rnd(i + 40) - 0.5) * 0.4;
+    top.rotation.z = rnd(i + 41) * 3;
+    top.castShadow = true;
+    g.add(top);
   }
   g.userData.radius = 0.5 * s;
   return g;
@@ -178,9 +287,9 @@ export function makeBamboo(seed = 0) {
 // ---------- 日本家屋 ----------
 export function makeHouse({ w = 8, d = 6, h = 3, roofC = '#454f5a', engawa = true, doorSide = 1 } = {}) {
   const g = new THREE.Group();
-  const plaster = new THREE.MeshLambertMaterial({ map: plasterTex() });
-  const wood = new THREE.MeshLambertMaterial({ map: woodTex() });
-  const kawara = new THREE.MeshLambertMaterial({ map: kawaraTex(roofC) });
+  const plaster = new THREE.MeshLambertMaterial({ map: plasterTex(), bumpMap: plasterTex(), bumpScale: 0.02 });
+  const wood = new THREE.MeshLambertMaterial({ map: woodTex(), bumpMap: woodTex(), bumpScale: 0.035 });
+  const kawara = new THREE.MeshLambertMaterial({ map: kawaraTex(roofC), bumpMap: kawaraTex(roofC), bumpScale: 0.05 });
 
   // 基礎石
   g.add(m(new THREE.BoxGeometry(w + 0.3, 0.4, d + 0.3), mat(0x8b8578), 0, 0.2, 0));
@@ -246,8 +355,8 @@ export function makeTorii(scale = 1) {
 
 export function makeShrineHall() {
   const g = new THREE.Group();
-  const kawara = new THREE.MeshLambertMaterial({ map: kawaraTex('#39463f') });
-  const wood = new THREE.MeshLambertMaterial({ map: woodTex('#6a4a2e') });
+  const kawara = new THREE.MeshLambertMaterial({ map: kawaraTex('#39463f'), bumpMap: kawaraTex('#39463f'), bumpScale: 0.05 });
+  const wood = new THREE.MeshLambertMaterial({ map: woodTex('#6a4a2e'), bumpMap: woodTex('#6a4a2e'), bumpScale: 0.035 });
   g.add(m(new THREE.BoxGeometry(9.4, 1, 7.4), mat(0x93897c), 0, 0.5, 0));
   const hall = m(new THREE.BoxGeometry(7.5, 3, 5.5), wood, 0, 2.5, 0);
   hall.castShadow = true;
@@ -282,7 +391,7 @@ export function makeStoneLantern() {
 // ---------- 橋・田・小物 ----------
 export function makeBridge() {
   const g = new THREE.Group();
-  const wood = new THREE.MeshLambertMaterial({ map: woodTex('#8a6538') });
+  const wood = new THREE.MeshLambertMaterial({ map: woodTex('#8a6538'), bumpMap: woodTex('#8a6538'), bumpScale: 0.035 });
   const deck = m(new THREE.BoxGeometry(4.4, 0.28, 16), wood, 0, 0.3, 0);
   deck.castShadow = true;
   g.add(deck);
@@ -363,10 +472,23 @@ export function makeAppleTree(seed = 0) {
   const trunk = m(new THREE.CylinderGeometry(0.09, 0.16, 1.1, 6), smat(0x6a4a2e), 0, 0.55, 0);
   trunk.castShadow = true;
   g.add(trunk);
-  const crown = m(new THREE.IcosahedronGeometry(1.05 + rnd(1) * 0.25, 1), smat(new THREE.Color().setHSL(0.3, 0.45, 0.27 + rnd(2) * 0.05)), 0, 1.75, 0);
+  const cr = 1.05 + rnd(1) * 0.25;
+  const crown = m(new THREE.IcosahedronGeometry(cr * 0.62, 1), smat(new THREE.Color().setHSL(0.3, 0.45, 0.17 + rnd(2) * 0.04)), 0, 1.75, 0);
   crown.scale.y = 0.9;
   crown.castShadow = true;
   g.add(crown);
+  const aMat = new THREE.MeshLambertMaterial({ map: leafTex(), color: new THREE.Color().setHSL(0.3, 0.45, 0.55 + rnd(2) * 0.06), alphaTest: 0.5, side: THREE.DoubleSide });
+  const aGeo = new THREE.PlaneGeometry(cr * 2.6, cr * 2.6);
+  for (let k = 0; k < 3; k++) {
+    const card = m(aGeo, aMat, 0, 1.75, 0);
+    card.rotation.y = (k / 3) * Math.PI + rnd(k + 50) * 0.5;
+    card.castShadow = true;
+    g.add(card);
+  }
+  const aTop = m(aGeo, aMat, 0, 2.05, 0);
+  aTop.rotation.x = -Math.PI / 2;
+  aTop.castShadow = true;
+  g.add(aTop);
   g.userData.camBlock = { r: 1.35, y0: 0.9, y1: 2.9 }; // カメラめり込み防止
   for (let i = 0; i < 6; i++) {
     const a = rnd(i + 3) * Math.PI * 2, ph = 0.4 + rnd(i + 9) * 2.2;
@@ -463,7 +585,7 @@ export function makeBusStop() {
 
 export function makeYatai(roofColor = 0xd8433b) {
   const g = new THREE.Group();
-  const wood = new THREE.MeshLambertMaterial({ map: woodTex() });
+  const wood = new THREE.MeshLambertMaterial({ map: woodTex(), bumpMap: woodTex(), bumpScale: 0.035 });
   g.add(m(new THREE.BoxGeometry(2.6, 1, 1.4), wood, 0, 0.5, 0));
   g.add(m(new THREE.BoxGeometry(2.7, 0.08, 1.5), smat(0xead8b0), 0, 1.04, 0));
   for (const sx of [-1, 1]) g.add(m(new THREE.CylinderGeometry(0.05, 0.05, 2.4, 5), wood, sx * 1.2, 1.2, 0));
@@ -773,8 +895,8 @@ export function makeMichishirube(entries) {
 // ---------- 竹やぶのひみつきち (板ぎれと トタンの かたむいた小屋) ----------
 export function makeHideout() {
   const g = new THREE.Group();
-  const wood = new THREE.MeshLambertMaterial({ map: woodTex('#8a6a44') });
-  const wood2 = new THREE.MeshLambertMaterial({ map: woodTex('#6e5236') });
+  const wood = new THREE.MeshLambertMaterial({ map: woodTex('#8a6a44'), bumpMap: woodTex('#8a6a44'), bumpScale: 0.035 });
+  const wood2 = new THREE.MeshLambertMaterial({ map: woodTex('#6e5236'), bumpMap: woodTex('#6e5236'), bumpScale: 0.035 });
   // かたむいた柱 4本
   for (const [px, pz, lean] of [[-1.1, -0.9, 0.06], [1.1, -0.9, -0.04], [-1.1, 0.9, 0.03], [1.1, 0.9, -0.06]]) {
     const post = m(new THREE.BoxGeometry(0.14, 1.9, 0.14), wood2, px, 0.95, pz);
@@ -842,7 +964,7 @@ export function makeGrave(seed = 0) {
 // ---------- 見晴らし台 (十瓶山の中腹。木の柵とベンチ) ----------
 export function makeLookout() {
   const g = new THREE.Group();
-  const wood = new THREE.MeshLambertMaterial({ map: woodTex('#8a6a44') });
+  const wood = new THREE.MeshLambertMaterial({ map: woodTex('#8a6a44'), bumpMap: woodTex('#8a6a44'), bumpScale: 0.035 });
   // ウッドデッキ
   const deck = m(new THREE.BoxGeometry(4.6, 0.18, 3.2), wood, 0, 0.09, 0);
   deck.receiveShadow = true;

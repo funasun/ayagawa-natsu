@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { smat } from './builders.js';
+import { smat, cirrusTex } from './builders.js';
 
 // 夕方 (16:50-19:30) は 金色 → 茜 → 薄紫 → 群青 と、ながく ていねいに 暮れていく
 const KEYS = [
@@ -148,6 +148,15 @@ export class Sky {
       }
       cl.position.set((i / 9) * 440 - 220, 62 + (i % 3) * 12, ((i * 53) % 240) - 120);
       this.clouds.add(cl);
+    }
+    // 巻雲 (すじ雲): たかい そらに うすく ながれる。空の 奥ゆきが ぐっと ふえる
+    const cirrusMat = new THREE.MeshBasicMaterial({ map: cirrusTex(), transparent: true, opacity: 0.45, depthWrite: false, fog: false, side: THREE.DoubleSide });
+    for (let i = 0; i < 4; i++) {
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(360, 130), cirrusMat);
+      pl.rotation.x = -Math.PI / 2;
+      pl.rotation.z = i * 0.7;
+      pl.position.set((i % 2) * 260 - 130, 150 + i * 6, ((i * 97) % 200) - 100);
+      this.clouds.add(pl);
     }
     scene.add(this.clouds);
   }
