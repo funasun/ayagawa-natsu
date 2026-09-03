@@ -763,6 +763,26 @@ export class EventSystem {
       list.push({ x: 114.5, z: 19.5, r: 2.4, label: 'えんがわに こしかける', action: () => this.engawaRest() });
     }
 
+    // ---- フェーズ7: 柏原渓谷 ----
+    const G = this.world.gorge;
+    if (G) {
+      if (c.min >= 480 && c.min < 1140 && !s.flags['ashiyu' + c.day]) {
+        list.push({ x: G.ashiyu.x + 2.6, z: G.ashiyu.z - 0.8, r: 2.7, label: 'あしゆに つかる', action: () => this.ashiyu() });
+      }
+      list.push({ x: G.fuketsu.x, z: G.fuketsu.z - 2.6, r: 2.7, label: 'ふうけつに てを かざす', action: () => this.fuketsu() });
+      if ((c.weather === 'sunny' || c.weather === 'cloudy') && c.min >= 600 && c.min < 1000 && !s.flags['fuchi' + c.day]) {
+        list.push({ x: G.fuchi.x, z: G.fuchi.z + 8.5, r: 3.0, label: 'ふちに とびこむ (つめたい!)', action: () => this.fuchi() });
+      }
+      const night = c.min >= 1150 || c.min < 330;
+      list.push({ x: G.campfire.x, z: G.campfire.z, r: 2.4, label: night ? 'たきびを たく' : 'たきびの あとを しらべる', action: () => this.takibi() });
+    }
+    // ---- フェーズ7: 北条の里 ----
+    const S = this.world.sato;
+    if (S) {
+      list.push({ x: S.bus.x - 1.2, z: S.bus.z + 1.6, r: 2.6, label: 'バスてい「ほうじょう」', action: () => this.busStop() });
+      if (!s.flags['hokora' + c.day]) list.push({ x: S.hokora.x, z: S.hokora.z - 2.8, r: 2.6, label: 'ほこらに てを あわせる', action: () => this.hokora() });
+    }
+
     // ひまわり畑の そえぎ (けんかの けりを つける ばしょ)。あかるいうちなら いつでも
     if (s.flags.kenkaKenta && !s.flags.kenkaDone && c.min >= 380 && c.min < 1140) {
       list.push({ x: 20.5, z: 29.5, r: 3.0, label: 'ひまわり畑を のぞく', action: () => this.soegi() });
@@ -1425,6 +1445,118 @@ export class EventSystem {
     this.audio.sfx('splash');
     this.ui.toast('ようけ あそんだ! ……くちびるが ちょっと むらさきに なっとる');
     logEvent(s, 'かわであそんだ');
+  }
+
+  // ============ フェーズ7: 柏原渓谷 ============
+  async ashiyu() {
+    const s = this.state;
+    s.flags['ashiyu' + s.day] = true;
+    this.audio.sfx('splash');
+    await this.ui.fadePulse();
+    s.min = Math.min(s.min + 35, 1255);
+    const first = !s.flags.ashiyuEver;
+    s.flags.ashiyuEver = true;
+    await this.ui.showStory([
+      'くつを ぬいで、そーっと あしを つける。<br><br>……あつっ。……いや、ちょうど ええ。<br>ゆげの むこうで、川の おとが ずっと しとる。',
+      first
+        ? 'おかみさんが むぎちゃを もってきてくれた。<br>「この ゆはな、おじいさんの おじいさんの ころから<br>ここで わいとるんよ」<br><br>あしの さきから、つかれが とけていく。'
+        : 'あしを ゆらすと、ゆが ちゃぷんと いう。<br>そらの あおと、すぎの みどりと、ゆの けむり。<br><br>なんにも かんがえんで ええ じかん。',
+    ]);
+    this.ui.toast('あしが ぽかぽか。……あるく げんきが わいてきた');
+    logEvent(s, 'かしわらそうのあしゆにつかった');
+  }
+
+  async fuketsu() {
+    const s = this.state;
+    this.audio.sfx('page');
+    if (!s.flags.fuketsu) {
+      s.flags.fuketsu = true;
+      s.flags.secret_fuketsu = true;
+      await this.ui.showStory([
+        'あなの まえに 立つと、ひやっとした かぜが<br>かおに ふきつけてきた。<br><br>まなつなのに、れいぞうこを あけたみたいや。',
+        'てを かざす。ほんまに つめたい。<br>おくは まっくらで、どこまで つづいとるんか わからん。<br><br>ばあちゃんが ゆうとった。<br>「ふうけつはな、やまの おくの こおりの いけに<br>つながっとるんじゃと」',
+        'じいちゃんと げんじいも、ガキの ころ<br>ろうそく もって はいろうとして、<br>ふたりとも 10ぽで にげかえったらしい。<br><br>……ぼくも、10ぽで やめといた。',
+      ]);
+      logEvent(s, 'ふうけつのつめたいかぜにあたった');
+      return;
+    }
+    this.ui.toast('ひんやり。……なつの あいだ、ここだけ ふゆみたいや');
+    if (!s.flags['fuketsu' + s.day]) { s.flags['fuketsu' + s.day] = true; logEvent(s, 'ふうけつですずんだ'); }
+  }
+
+  async fuchi() {
+    const s = this.state;
+    s.flags['fuchi' + s.day] = true;
+    this.ui.toast('いわの うえから ―― せーのっ!');
+    await new Promise((r) => setTimeout(r, 800));
+    this.audio.sfx('splash');
+    await this.ui.fadePulse();
+    s.min = Math.min(s.min + 40, 1255);
+    await this.ui.showStory([
+      'ドボン!!<br><br>――つ、つめたっ!!!<br>川の みずより ずっと つめたい。<br>からだじゅうが きゅっと ちぢむ。',
+      'みなもに かおを だすと、いきが しろく なりそうなくらい。<br>ふちの そこは みどりいろで、そこが 見えん。<br><br>いわに はいあがって、ひなたで ふるえながら わらった。',
+    ]);
+    this.ui.toast('くちびるが まっさお。でも さいこうに きもちええ!');
+    logEvent(s, 'かしわらけいこくのふちにとびこんだ');
+  }
+
+  async takibi() {
+    const s = this.state;
+    const c = this.clock;
+    const night = c.min >= 1150 || c.min < 330;
+    if (!night) { this.ui.toast('たきびの あと。まだ すこし、けむりの においが する'); return; }
+    if (s.flags['takibi' + s.day]) { this.ui.toast('ひは もう、おきに なっとる'); return; }
+    s.flags['takibi' + s.day] = true;
+    s.flags.secret_takibi = true;
+    this.audio.sfx('coin');
+    await this.ui.fadePulse();
+    s.min = Math.min(s.min + 30, 1270);
+    await this.ui.showStory([
+      'おちとる えだを あつめて、いしの わの なかに つむ。<br>マッチを 3ぼん むだにして、4ほんめで ついた。<br><br>パチ、パチ。',
+      'ひの むこうに、川の おと。<br>うえを 見たら、いわの あいだの ほそながい そらに<br>ほしが ぎっしり つまっとった。<br><br>まちより ずっと、ようけ ある。',
+      'ひが ちいさく なるまで、ずっと 見とった。<br><br>だれにも いえん ひみつの ばしょが、<br>また ひとつ ふえた。',
+    ]);
+    logEvent(s, 'けいこくでたきびをした');
+  }
+
+  // ============ フェーズ7: 北条の里 ============
+  async busStop() {
+    const s = this.state;
+    const pick = await this.ui.choice('バスてい「ほうじょう」', ['じこくひょうを 見る', 'ベンチで バスを まつ', 'やめとく']);
+    if (pick === 0) {
+      await this.ui.say('じこくひょう', [
+        'たかまつ ゆき ―― 7:12、16:40。',
+        '……いちにち 2ほんだけや。',
+        'かみが ひやけで まっしろに なっとる。',
+      ]);
+      return;
+    }
+    if (pick !== 1) return;
+    if (s.flags['bus' + s.day]) { this.ui.toast('きょうは もう ようけ まった'); return; }
+    s.flags['bus' + s.day] = true;
+    await this.ui.fadePulse();
+    s.min = Math.min(s.min + 45, 1255);
+    await this.ui.showStory([
+      'ベンチに すわって、みちの さきを 見とった。<br><br>セミの こえ。ひかる 田んぼ。<br>とおくで トラクターの おと。',
+      'バスは こんかった。<br><br>でも、なんでか それで ええ 気がした。<br>まつ じかんの ほうが、ええ 気がした。',
+    ]);
+    logEvent(s, 'バスていでバスをまった');
+  }
+
+  async hokora() {
+    const s = this.state;
+    s.flags['hokora' + s.day] = true;
+    this.audio.sfx('coin');
+    if (!s.flags.hokoraFirst) {
+      s.flags.hokoraFirst = true;
+      await this.ui.showStory([
+        'おかの うえの ちいさな ほこら。<br>たの かみさまが まつってある らしい。<br><br>「ことしも おこめが よう とれますように」',
+        'てを あわせたら、かぜが ふいて<br>田んぼが いっせいに なみうった。<br><br>……かみさま、きいてくれたんかな。',
+      ]);
+    } else {
+      this.ui.toast('てを あわせた。田んぼを わたる かぜが きもちええ');
+    }
+    logEvent(s, 'さとのほこらにてをあわせた');
   }
 
   // ひまわりの そえぎ ―― ことばの ない 仲なおり

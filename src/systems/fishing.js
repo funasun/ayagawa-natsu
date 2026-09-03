@@ -102,7 +102,7 @@ export class FishingSystem {
     if (this.phase === 'idle') {
       if (player.moving) return;
       const w = this.world.waterZone(player.pos.x, player.pos.z);
-      if (w) prompts.push({ dist: 1.5, label: `つりをする (${w.zone === 'river' ? 'あやがわ' : 'ほうじょういけ'})`, action: () => this.start(w) });
+      if (w) prompts.push({ dist: 1.5, label: `つりをする (${w.zone === 'river' ? 'あやがわ' : w.zone === 'gorge' ? 'かしわらけいこく' : 'ほうじょういけ'})`, action: () => this.start(w) });
       return;
     }
 

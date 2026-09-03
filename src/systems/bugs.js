@@ -44,7 +44,8 @@ export class BugSystem {
     if (!kinds.length) return;
 
     const k = kinds[Math.floor(Math.random() * kinds.length)];
-    const species = this.validSpecies(k.spot);
+    // 地域かぎりの 虫 (zone つき) は、その 地域の 木にしか つかない
+    const species = this.validSpecies(k.spot).filter((sp) => !sp.zone || (k.ref && k.ref.zone === sp.zone));
     if (!species.length) return;
     const pool = [];
     species.forEach((s) => { for (let i = 0; i < 4 - s.rarity; i++) pool.push(s); });

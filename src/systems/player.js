@@ -56,7 +56,7 @@ export class Player {
         if (t >= tHit) break;
         const y = py + dy * t;
         if (y < o.y0 || y > o.y1) continue;
-        if (Math.hypot(px + dx * t - o.x, pz + dz * t - o.z) < o.r) { tHit = Math.max(0.18, t - 0.1); break; }
+        if (Math.hypot(px + dx * t - o.x, pz + dz * t - o.z) < o.r) { tHit = Math.max(0.42, t - 0.1); break; } // 0.42 = 主人公の あたまの うえまで ちぢまない 下限
       }
     }
     if (tHit < 1) v.set(px + dx * tHit, py + dy * tHit, pz + dz * tHit);

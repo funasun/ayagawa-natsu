@@ -2,7 +2,7 @@ import { BUGS, FISH, youbi, calDay, WEATHER_LABEL } from '../data/data.js';
 import { bugCount, fishCount } from '../core/state.js';
 import { options, saveOptions } from '../core/options.js';
 import { fsSupported, fsElement, toggleFullscreen } from '../core/fullscreen.js';
-import { riverCenterZ, RIVER_HALF, POND, TOBIN, RAIL_PTS, roadDefs, BRIDGE_X, BRIDGE2_X, BRIDGE3_X, TOBIISHI_X } from '../world/world.js';
+import { riverCenterZ, RIVER_HALF, POND, TOBIN, RAIL_PTS, roadDefs, BRIDGE_X, BRIDGE2_X, BRIDGE3_X, TOBIISHI_X, BOUNDS, YADO, FUKETSU, CAMP, SATO_BUS, HOKORA } from '../world/world.js';
 
 const WEATHER_ICON = { sunny: '☀', cloudy: '☁', rain: '🌧', storm: '🌀' };
 const $ = (id) => document.getElementById(id);
@@ -219,9 +219,9 @@ export class UI {
     const cv = this.els.map.querySelector('canvas');
     const ctx = cv.getContext('2d');
     const W = cv.width, H = cv.height;
-    // 世界座標 (x: -232..232 / z: -212..148) → 画面 (右=+x, 上=-z)
-    const px = (x) => ((x + 232) / 464) * (W - 60) + 30;
-    const py = (z) => ((z + 212) / 360) * (H - 60) + 30;
+    // 世界座標 (x: -370..340 / z: -212..148) → 画面 (右=+x, 上=-z)
+    const px = (x) => ((x - BOUNDS.xMin) / (BOUNDS.xMax - BOUNDS.xMin)) * (W - 60) + 30;
+    const py = (z) => ((z - BOUNDS.zMin) / (BOUNDS.zMax - BOUNDS.zMin)) * (H - 60) + 30;
 
     // 紙のじめん
     ctx.fillStyle = '#eee5c8';
@@ -231,6 +231,8 @@ export class UI {
     const hill = (x, z, r) => { ctx.beginPath(); ctx.arc(px(x), py(z), r, 0, 7); ctx.fill(); };
     hill(-140, -152, 52); hill(-200, -130, 70); hill(-60, -165, 62); hill(62, -154, 48); hill(155, -147, 50);
     hill(TOBIN.x, TOBIN.z, 40); hill(-210, -40, 46); hill(-232, 40, 40); hill(210, 110, 44);
+    // 柏原渓谷の 両岸の 岩壁と、そのむこうの 大きな山 / 北条の里の おか
+    hill(-300, -150, 46); hill(-345, -140, 44); hill(-280, -40, 40); hill(-340, -30, 44); hill(-355, 40, 50); hill(-355, 170, 46); hill(HOKORA.x, HOKORA.z, 20);
     // 堤山のさんちょう (こいみどり)
     ctx.fillStyle = '#b8d194';
     hill(-60, -165, 34);
@@ -240,6 +242,7 @@ export class UI {
     ctx.fillStyle = '#d9e6a8';
     const paddy = (x, z, w, h) => ctx.fillRect(px(x) - w / 2, py(z) - h / 2, w, h);
     paddy(31, 61, 90, 46); paddy(103, 35, 62, 42); paddy(-135, -54, 42, 30);
+    paddy(283, -18, 86, 24); paddy(283, 28, 86, 24); paddy(262, 52, 40, 22); // 北条の里
 
     // 道 (roadDefs から)
     ctx.strokeStyle = '#d3bd8e'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -253,7 +256,7 @@ export class UI {
     // 綾川 (上流=みなみ -x から 下流=きた +x へ)
     ctx.strokeStyle = '#8fbdd8'; ctx.lineWidth = RIVER_HALF * 2 * 1.7;
     ctx.beginPath();
-    for (let x = -232; x <= 232; x += 8) { const m = x === -232 ? 'moveTo' : 'lineTo'; ctx[m](px(x), py(riverCenterZ(x))); }
+    for (let x = BOUNDS.xMin; x <= BOUNDS.xMax; x += 8) { const m = x === BOUNDS.xMin ? 'moveTo' : 'lineTo'; ctx[m](px(x), py(riverCenterZ(x))); }
     ctx.stroke();
     // 北条池
     ctx.fillStyle = '#8fbdd8';
@@ -285,6 +288,11 @@ export class UI {
       [-49, 63, '🏫', 'しょうがっこう'],
       [70, -34, '🛒', 'モール'],
       [-16, 25, '🍧', 'しょうてんがい'],
+      [YADO.x, YADO.z, '♨', 'かしわらそう'],
+      [FUKETSU.x, FUKETSU.z, '🌬', 'ふうけつ'],
+      [CAMP.x, CAMP.z, '⛺', 'キャンプじょう'],
+      [SATO_BUS.x, SATO_BUS.z, '🚌', 'バスてい'],
+      [HOKORA.x, HOKORA.z, '⛩', 'さとの ほこら'],
       [130, 78, '', 'ほうじょういけ'],
       [143, 20, '🪦', 'おはか'],
       [-135, -56, '', 'たなだ'],

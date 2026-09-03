@@ -81,7 +81,7 @@ export class Sky {
         void main(){ float h = normalize(vPos + vec3(0.0, offset, 0.0)).y;
         gl_FragColor = vec4(mix(bottomColor, topColor, pow(max(h, 0.0), exponent)), 1.0); }`,
     });
-    this.dome = new THREE.Mesh(new THREE.SphereGeometry(400, 24, 12), domeMat);
+    this.dome = new THREE.Mesh(new THREE.SphereGeometry(700, 24, 12), domeMat);
     this.dome.renderOrder = -10;
     scene.add(this.dome);
 
@@ -110,7 +110,7 @@ export class Sky {
     const sp = [];
     for (let i = 0; i < 400; i++) {
       const a = Math.random() * Math.PI * 2, e = Math.random() * Math.PI * 0.45 + 0.12;
-      const r = 360;
+      const r = 640;
       sp.push(Math.cos(a) * Math.cos(e) * r, Math.sin(e) * r, Math.sin(a) * Math.cos(e) * r);
     }
     starGeo.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
@@ -182,8 +182,9 @@ export class Sky {
     // 夕方は 茜色に とけて 霞む。
     const dayHaze = sunDay * (weather === 'sunny' ? 1 : weather === 'cloudy' ? 0.55 : weather === 'rain' ? 0.2 : 0.1);
     this.scene.fog.color.copy(horizon).lerp(HAZE_WARM, dayHaze * 0.5);
-    this.scene.fog.near = (weather === 'storm' ? 40 : weather === 'rain' ? 65 : 110 - w2 * 45) - dayHaze * 12;
-    this.scene.fog.far = (weather === 'storm' ? 180 : weather === 'rain' ? 240 : 380 - w2 * 90) - dayHaze * 70;
+    // 世界が ひろがったぶん (フェーズ7)、もやの とどく きょりも 1.5倍に
+    this.scene.fog.near = ((weather === 'storm' ? 40 : weather === 'rain' ? 65 : 110 - w2 * 45) - dayHaze * 12) * 1.5;
+    this.scene.fog.far = ((weather === 'storm' ? 180 : weather === 'rain' ? 240 : 380 - w2 * 90) - dayHaze * 70) * 1.5;
 
     // 太陽 6:00東 → 19:00西。夕方と朝は 低い光で 影が ながく のびる
     const az = Math.PI * (1 - t);

@@ -16,6 +16,7 @@ export const BUGS = [
   { id: 'suzumushi', name: 'スズムシ', rarity: 2, spot: 'grass', time: [1140, 1290], color: 0x333344, size: 0.18, desc: 'リーンリーン…よるの草むらのおんがくか。' },
   { id: 'hotaru', name: 'ヘイケボタル', rarity: 2, spot: 'river', time: [1150, 1290], days: [1, 6], glow: true, color: 0x445533, size: 0.16, desc: '8月はじめのよる、かわべでひかる。いまだけのきせき。' },
   { id: 'tsukutsuku', name: 'ツクツクボウシ', rarity: 2, spot: 'tree', time: [420, 1050], days: [15, 31], color: 0x5a6b4a, size: 0.26, desc: 'このこえが きこえたら、なつやすみは おりかえし。' },
+  { id: 'miyama', name: 'ミヤマクワガタ', rarity: 3, spot: 'tree', zone: 'gorge', time: [1080, 1290], time2: [360, 470], color: 0x3a2a18, size: 0.44, desc: 'やまの おくにしか おらん、みみの ある クワガタ。かしわらけいこくの 木で。' },
   { id: 'akiakane', name: 'アキアカネ', rarity: 2, spot: 'grass', time: [480, 1080], days: [20, 31], color: 0xcc4433, size: 0.28, desc: 'あかとんぼ。なつのおわりに、やまから おりてくる。' },
 ];
 
@@ -33,6 +34,9 @@ export const FISH = [
   { id: 'ayu', name: 'アユ', rarity: 3, zone: 'sawa', len: '17cm', desc: 'つつみやまの たきつぼのぬし。てづかみでしか つかまえられん。しおやきは さいこう!' },
   { id: 'ugui', name: 'ウグイ', rarity: 2, zone: 'river', weather: ['rain', 'storm'], len: '21cm', desc: 'あめの日にだけ うわずってくる。あめつりの あいぼう。' },
   { id: 'donko', name: 'ドンコ', rarity: 2, zone: 'river', time: [1080, 1290], weather: ['cloudy', 'rain'], len: '13cm', desc: 'くもりの よるに いしのかげから ぬっと でてくる。' },
+  { id: 'amago', name: 'アマゴ', rarity: 2, zone: 'gorge', len: '19cm', desc: 'かしわらけいこくの つめたい ながれに すむ。あかい てんてんが きれい。' },
+  { id: 'yamame', name: 'ヤマメ', rarity: 3, zone: 'gorge', time: [360, 540], time2: [960, 1140], len: '23cm', desc: 'けいりゅうの じょおう。あさと ゆうがたの、ひかりの すくない ときだけ。' },
+  { id: 'kajika', name: 'カジカ', rarity: 1, zone: 'gorge', len: '9cm', desc: 'いしの したに はりついとる、へんな かおの さかな。' },
   { id: 'nushi', name: 'ぬしさま', rarity: 3, nushi: true, zone: 'pond', time: [1020, 1170], weather: ['sunny', 'cloudy'], flag: 'nushiHint', len: '88cm', desc: 'ほうじょういけの ぬし。じいちゃんと げんじいが おいつづけた、まぼろしの 大ゴイ。' },
 ];
 
@@ -99,14 +103,14 @@ export const DAY_GUIDE = {
   9: 'きょうは 小学校の なつまつり! ゆうがた 校庭へ',
   10: '雨の日。ばあちゃんと はなしたり、2かいの コレクションを ながめよう',
   11: 'はれた ひるまは、はしの まんなかから 川に とびこめる',
-  12: 'かわらで みずきり しょうぶ。じこベストを のばそう',
+  12: '陶の きたへ あるいてみよう。バスていまで つづく、田んぼの みち (ほうじょうの さと)',
   13: 'ゆうがた、いえのまえで ばあちゃんと むかえびを たく',
   14: 'おぼんの まんなか。ばあちゃんに はなしかけると ええはなしが きける',
   15: 'ゆうがた、おくりびで ご先祖さまを みおくる',
   16: 'ツクツクボウシが なきはじめた。あたらしい セミを ずかんへ',
   17: 'げんじいが なにか おしえたそうに しとる (ため池)',
   18: 'ゆうがたの ため池に「ぬしさま」の かげが 出るらしい',
-  19: 'つつみやまへ。たきつぼで アユの てづかみに ちょうせん',
+  19: '川の みなみの おく、かしわらけいこくへ。あしゆと ふうけつが あるらしい',
   20: 'たいふうの日。そとは あぶない。いえで ばあちゃんと すごそう',
   21: 'たいふういっかの あおぞら。みはらしだいから けしきを みよう',
   22: 'ことでんに のって 高松の まちへ いってみよう',

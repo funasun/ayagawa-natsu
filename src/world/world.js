@@ -35,6 +35,27 @@ export const SHILLS = [
 // 滝つぼ (堤山の さわが おちる ふち。あゆのつかみどりの場所)
 export const TAKIBO = { x: -33, z: -127, r: 4.2, shelf: 15.4, y: 15.1 };
 
+// ==== 世界の ひろさ (フェーズ7: 南北へ おおきく ひろげた) ====
+export const BOUNDS = { xMin: -370, xMax: 340, zMin: -212, zMax: 148 };
+// 柏原渓谷 (かしわらけいこく): 綾川の上流 (-x) が 岩の谷に なるところ
+export const GORGE_X = -240;                 // ここより みなみが 渓谷
+export const GORGE_FLOOR = 18;               // 川の まんなかから ここまでが 谷そこ (その外は 岩壁)
+export const GORGE_FALL_X = -334;            // 谷の おくの 小さな滝 (川が だんに なる)
+export const FUCHI_X = -292;                 // 淵 (ふかくて みどりの 水)
+export const YADO = { x: -318, z: riverCenterZ(-318) + 16.0 };      // 温泉宿「かしわら荘」(縁側が 谷みちに かからない 位置)
+export const ASHIYU = { x: -310, z: riverCenterZ(-310) + 13.6 };    // 足湯 (宿の よこ。谷みちには はみださない)
+export const CAMP = { x: -262, z: riverCenterZ(-262) + 12 };        // キャンプ場
+export const FUKETSU = { x: -352, z: riverCenterZ(-352) + 17.6 };   // 風穴 (東の岩壁)
+// 北条の里 (陶の北): 田んぼの ひろがる 里
+export const SATO_KNOLL = { x: 300, z: 78, h: 5, r: 24 };           // 里の社の おか
+export const SATO_BUS = { x: 334, z: 6.5 };                          // バス停 (みちの おわり)
+export const HOKORA = { x: 300, z: 80 };
+// 歩ける長方形の すぐそとに そびえる 大きな山 (地面も もりあげて ほんものの山にする)
+export const BIG_MTS = [
+  { x: -355, z: 40, h: 40, r: 60 },
+  { x: -365, z: 170, h: 38, r: 56 },
+];
+
 const hash = (x, z) => {
   const n = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
   return n - Math.floor(n);
@@ -52,6 +73,22 @@ function ridges(x, z) {
   for (const hh of SHILLS) {
     const dH = Math.hypot(x - hh.x, z - hh.z);
     y += hh.h * Math.exp(-(dH * dH) / (hh.r * hh.r));
+  }
+  // 柏原渓谷: 上流ほど 谷そこが 高く、川から GORGE_FLOOR はなれると 岩壁が そそりたつ
+  if (x < GORGE_X) {
+    const ramp = Math.min(1, (GORGE_X - x) / 30);
+    const dz = Math.abs(z - riverCenterZ(x));
+    y += (GORGE_X - x) * 0.09 * ramp;
+    y += Math.min(24, Math.max(0, dz - GORGE_FLOOR) * 1.8) * ramp;
+    // 谷の おくの 小さな滝: 川そのものが 2.8m の だんに なる
+    if (x < GORGE_FALL_X + 2.5) y += 2.8 * Math.min(1, (GORGE_FALL_X + 2.5 - x) / 2.5);
+  }
+  // 北条の里の おか (社が たつ)
+  const dK = Math.hypot(x - SATO_KNOLL.x, z - SATO_KNOLL.z);
+  y += SATO_KNOLL.h * Math.exp(-(dK * dK) / (SATO_KNOLL.r * SATO_KNOLL.r));
+  for (const m of BIG_MTS) {
+    const d = Math.hypot(x - m.x, z - m.z);
+    y += m.h * Math.exp(-(d * d) / (m.r * m.r));
   }
   return y;
 }
@@ -128,6 +165,13 @@ export const roadDefs = [
   { pts: [[56, 21], [58, -8], [60, -26], [66, -30]], w: 3 },
   // 役場まえ
   { pts: [[-20.6, 3], [-27, 3]], w: 2.2 },
+  // ---- フェーズ7: 北条の里 (陶の北)。幹線を バス停まで のばす ----
+  { pts: [[230, 7], [262, 6], [296, 5], [334, 4]], w: 3.6 },
+  { pts: [[262, 6], [262, 40], [256, 52]], w: 2.2 },       // 農家Bへ
+  { pts: [[296, 5], [298, 44], [300, 72]], w: 2.0 },       // 里の社へ
+  { pts: [[262, 6], [266, -22], [270, -38]], w: 2.0 },     // 農家Aへ
+  // ---- フェーズ7: 柏原渓谷の 谷みち (東岸を 川ぞいに おくへ) ----
+  { pts: [[-230, -38], ...[-236, -250, -265, -280, -295, -310, -325, -340, -355, -366].map((x) => [x, riverCenterZ(x) + 9])], w: 1.9 },
 ];
 
 function segDist(px, pz, ax, az, bx, bz) {
@@ -147,7 +191,7 @@ function roadDist(x, z) {
 }
 
 // ==== ことでん琴平線 (挿頭丘方面から滝宮・陶を抜けて高松へ) ====
-export const RAIL_PTS = [[-240, -102], [-145, -90], [-90, -60], [-25, -30], [40, -24], [95, -18], [240, 8]];
+export const RAIL_PTS = [[-240, -102], [-145, -90], [-90, -60], [-25, -30], [40, -24], [95, -18], [240, 8], [345, 14]];
 function railDist(x, z) {
   let best = 1e9;
   for (let i = 0; i < RAIL_PTS.length - 1; i++) {
@@ -211,7 +255,7 @@ function densify(pts, step = 4) {
 
 const riverPts = () => {
   const pts = [];
-  for (let x = -238; x <= 238; x += 4) pts.push([x, riverCenterZ(x)]);
+  for (let x = -394; x <= 394; x += 4) pts.push([x, riverCenterZ(x)]);
   return pts;
 };
 
@@ -224,6 +268,8 @@ export function buildWorld(scene) {
     grassAreas: [
       { x: 22, z: 27, r: 6 }, { x: 10, z: 10, r: 6 }, { x: 30, z: 44, r: 8 }, { x: -28, z: 42, r: 8 },
       { x: 112, z: 12, r: 6 }, { x: 124, z: 60, r: 7 }, { x: -152, z: -10, r: 7 },
+      { x: 280, z: -6, r: 14 }, { x: 250, z: 60, r: 8 },                 // 北条の里
+      { x: -270, z: riverCenterZ(-270) + 12, r: 8 },                     // 渓谷の 川原
     ],
     lanternMats: [],
     // 橋の上はデッキの高さを歩く (両端はスロープでなじませる)
@@ -292,7 +338,7 @@ export function buildWorld(scene) {
   const dummy = new THREE.Object3D();
 
   // ---------- 地面 (実際の高低差 + 川と池の掘り込み。頂点カラーで塗り分け) ----------
-  const gGeo = new THREE.PlaneGeometry(520, 520, 260, 260);
+  const gGeo = new THREE.PlaneGeometry(800, 800, 400, 400);
   gGeo.rotateX(-Math.PI / 2);
   const gp = gGeo.attributes.position;
   const colors = new Float32Array(gp.count * 3);
@@ -979,18 +1025,39 @@ export function buildWorld(scene) {
   scene.add(fence3);
 
   // ---------- 遠景の山なみ ----------
+  // 遠景の円すいの すそ野が「歩ける範囲」に くいこむと、ものに めりこんだ 山になってしまう。
+  // (フェーズ7で 世界が ひろがったので) 歩ける長方形から すそ野+4 だけ はなれるまで 外へ おしだす
+  const pushOut = (mx, mz, r) => {
+    let x = mx, z = mz;
+    const cx0 = (BOUNDS.xMin + BOUNDS.xMax) / 2, cz0 = (BOUNDS.zMin + BOUNDS.zMax) / 2;
+    for (let k = 0; k < 60; k++) {
+      const cx = Math.max(BOUNDS.xMin, Math.min(BOUNDS.xMax, x)), cz = Math.max(BOUNDS.zMin, Math.min(BOUNDS.zMax, z));
+      if (Math.hypot(x - cx, z - cz) >= r + 4) break;
+      const dx = x - cx0, dz = z - cz0, L = Math.hypot(dx, dz) || 1;
+      x += (dx / L) * 20; z += (dz / L) * 20;
+    }
+    return [x, z];
+  };
+  // 地平のした: 遠景の山の あしもとが そらに ぬけないよう、ひろい すそ野の板を しく
+  {
+    const skirt = new THREE.Mesh(new THREE.PlaneGeometry(1800, 1800, 1, 1), smat(0x5f7a4c));
+    skirt.rotation.x = -Math.PI / 2;
+    skirt.position.y = -6;
+    scene.add(skirt);
+  }
   for (let i = 0; i < 12; i++) {
     const a = (i / 12) * Math.PI * 2 + 0.3;
     const dist = 250 + (i % 3) * 40;
     const h = 42 + (i % 4) * 18;
+    const r = 64 + (i % 3) * 24;
     const col = new THREE.Color().setHSL(0.36 - (i % 3) * 0.02, 0.25, 0.34 + (i % 3) * 0.06);
-    const mtn = new THREE.Mesh(new THREE.ConeGeometry(64 + (i % 3) * 24, h, 9), smat(col));
-    const mx = Math.cos(a) * dist, mz = Math.sin(a) * dist * 0.85;
+    const mtn = new THREE.Mesh(new THREE.ConeGeometry(r, h, 9), smat(col));
+    const [mx, mz] = pushOut(Math.cos(a) * dist, Math.sin(a) * dist * 0.85, r);
     mtn.position.set(mx, h / 2 - 5 + ridges(mx, mz) * 0.5, mz);
     scene.add(mtn);
   }
-  // 讃岐七富士: 高鉢山(綾上富士)。おむすび形の山 (堤山は ほんものの地形になったので遠景のみ)
-  for (const [mx, mz, h, r] of [[-290, -145, 52, 48]]) {
+  // 讃岐七富士: 高鉢山(綾上富士)。渓谷の 西の岩壁の うえに そびえる (谷そこには すそ野が とどかない)
+  for (const [mx, mz, h, r] of [[-335, -185, 52, 48]]) {
     const fuji = new THREE.Mesh(new THREE.ConeGeometry(r, h, 16), smat(new THREE.Color().setHSL(0.42, 0.24, 0.4)));
     fuji.position.set(mx, h / 2 - 3 + ridges(mx, mz) * 0.6, mz);
     scene.add(fuji);
@@ -1198,11 +1265,12 @@ export function buildWorld(scene) {
   // ---------- 遠景の第2層 (もやのむこうの大きな山なみ。カメラがむく -z がわを厚く) ----------
   const far2Defs = [
     [-300, -270, 85, 130], [-190, -320, 68, 110], [-80, -345, 92, 140], [30, -350, 72, 115],
-    [140, -330, 88, 135], [250, -290, 64, 105], [335, -220, 74, 115],
-    [-355, -60, 78, 120], [355, -30, 66, 105],
+    [140, -345, 88, 135], [250, -330, 64, 105], [430, -250, 74, 115],
+    [-355, 40, 78, 120], [455, -30, 66, 105],
   ];
   for (let i = 0; i < far2Defs.length; i++) {
-    const [mx, mz, h, r] = far2Defs[i];
+    const [mx0, mz0, h, r] = far2Defs[i];
+    const [mx, mz] = pushOut(mx0, mz0, r);
     const mcol = new THREE.Color().setHSL(0.4, 0.22, 0.3 + (i % 3) * 0.05);
     const mtn = new THREE.Mesh(new THREE.ConeGeometry(r, h, 10), smat(mcol));
     mtn.position.set(mx, h / 2 - 6, mz);
@@ -1218,12 +1286,13 @@ export function buildWorld(scene) {
     [20, -385, 128, 170, 0.03],   // 正面おくの 主峰
     [200, -355, 95, 140, 0.05],
     [-330, -255, 88, 130, 0.02],
-    [340, -245, 84, 130, 0.04],
-    [-365, 145, 92, 140, 0.03],
-    [360, 175, 86, 130, 0.05],
+    [430, -280, 84, 130, 0.04],
+    [-365, 170, 92, 140, 0.03],
+    [430, 200, 86, 130, 0.05],
   ];
   for (let i = 0; i < far3Defs.length; i++) {
-    const [mx, mz, h, r, lb] = far3Defs[i];
+    const [mx0, mz0, h, r, lb] = far3Defs[i];
+    const [mx, mz] = pushOut(mx0, mz0, r);
     const mcol = new THREE.Color().setHSL(0.42, 0.18, 0.34 + lb);
     const mtn = new THREE.Mesh(new THREE.ConeGeometry(r, h, 9), smat(mcol));
     mtn.position.set(mx, h / 2 - 10, mz);
@@ -1232,7 +1301,7 @@ export function buildWorld(scene) {
   // 讃岐富士 (飯野山) — おわんを ふせたような きれいな円すい。東の彼方に ぽつんと
   {
     const fuji = new THREE.Mesh(new THREE.ConeGeometry(64, 72, 14), smat(new THREE.Color().setHSL(0.38, 0.24, 0.36)));
-    fuji.position.set(330, 26, -150);
+    fuji.position.set(440, 26, -170);
     scene.add(fuji);
   }
 
@@ -1530,7 +1599,7 @@ export function buildWorld(scene) {
       if (a.id === skipId) continue;
       if (Math.abs(x - a.x) < a.r && Math.abs(z - a.z) < a.r && Math.hypot(x - a.x, z - a.z) < a.r) return true;
     }
-    if (Math.abs(x) > 232 || z > 148 || z < -212) return true; // みなみは山のむこうまで あるける
+    if (x > BOUNDS.xMax || x < BOUNDS.xMin || z > BOUNDS.zMax || z < BOUNDS.zMin) return true;
     const rc = riverCenterZ(x);
     const dR = Math.abs(z - rc);
     // 橋のうえは デッキ高さの範囲 (±2.2 < デッキ±2.3) だけ歩ける = らんかんから うっかり落ちない
@@ -1568,6 +1637,265 @@ export function buildWorld(scene) {
     }
   };
 
+  // =====================================================================
+  // 北条の里 (陶の北): 田んぼが どこまでも ひろがる — 農家・用水路・里の社・バス停
+  // =====================================================================
+  {
+    const satoDefs = [];
+    for (let i = 0; i < 6; i++) { satoDefs.push([248 + i * 14, -18]); satoDefs.push([248 + i * 14, 28]); }
+    for (let i = 0; i < 3; i++) satoDefs.push([248 + i * 14, 52]);
+    const riceSato = makeRiceRow(satoDefs.length * 14 * 8);
+    let si = 0;
+    for (const [px, pz] of satoDefs) {
+      const base = gy(px, pz);
+      const wp = new THREE.Mesh(new THREE.BoxGeometry(11.4, 0.14, 9.4), smat(0x7d9a6e, { transparent: true, opacity: 0.93 }));
+      wp.position.set(px, base + 0.2, pz);
+      scene.add(wp);
+      const bund = new THREE.Mesh(new THREE.BoxGeometry(12.4, 0.55, 10.4), smat(0xa08a5e));
+      bund.position.set(px, base + 0.05, pz);
+      bund.receiveShadow = true;
+      scene.add(bund);
+      for (let rz = 0; rz < 8; rz++) for (let rx = 0; rx < 14; rx++) {
+        dummy.position.set(px - 5.1 + rx * 0.78, base + 0.24, pz - 3.9 + rz * 1.1);
+        dummy.rotation.set(0, hash(rx + 7, rz + 3) * 3, 0);
+        dummy.scale.setScalar(0.85 + hash(rx + px, rz + pz) * 0.4);
+        dummy.updateMatrix();
+        riceSato.setMatrixAt(si++, dummy.matrix);
+      }
+    }
+    scene.add(riceSato);
+    // 用水路 (道と 田んぼの あいだを さらさら)
+    const suiro = new THREE.Mesh(new THREE.BoxGeometry(96, 0.26, 1.3), smat(0x5f93a8, { transparent: true, opacity: 0.86 }));
+    suiro.position.set(290, gy(290, -5) + 0.02, -5);
+    scene.add(suiro);
+    for (const ez of [-5.85, -4.15]) {
+      const edge = new THREE.Mesh(new THREE.BoxGeometry(96, 0.32, 0.22), smat(0x8d8474));
+      edge.position.set(290, gy(290, -5) + 0.12, ez);
+      scene.add(edge);
+    }
+    // 用水路には おちない (農家Aへの みちが わたる x≈264 だけ 板の はしで あける)
+    addRect(250, -5, 8, 0.7);
+    addRect(306, -5, 32, 0.7);
+    const ita = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.14, 1.9), smat(0x7a5a38));
+    ita.position.set(264, gy(264, -5) + 0.3, -5);
+    scene.add(ita);
+    // 農家 A (西がわ) と 軽トラ
+    const farmA = makeHouse({ w: 8, d: 5.5, h: 3, roofC: '#4e4a44' });
+    farmA.position.set(272, gy(272, -46), -46);
+    scene.add(farmA);
+    addHouse(272, -46, 8, 5.5, 1);
+    registerOccluder(farmA, 272, -46, 6.5, gy(272, -46) + 5.6);
+    const keitora = makeCar(0xe4e8ea);
+    keitora.position.set(265, gy(265, -40), -40);
+    keitora.rotation.y = 0.35;
+    scene.add(keitora);
+    addRect(265, -40, 1.9, 1.0);
+    const hatakeA = makeHatake();
+    hatakeA.position.set(284, gy(284, -46), -46);
+    scene.add(hatakeA);
+    // 農家 B (東がわ・道の おく)
+    const farmB = makeHouse({ w: 7.5, d: 5, h: 2.9, roofC: '#5a4438' });
+    farmB.position.set(252, gy(252, 60), 60);
+    scene.add(farmB);
+    addHouse(252, 60, 7.5, 5, -1);
+    registerOccluder(farmB, 252, 60, 6.2, gy(252, 60) + 5.5);
+    const wallB = makeStoneWall(7);
+    wallB.position.set(258, gy(258, 52), 52);
+    scene.add(wallB);
+    addRect(258, 52, 3.5, 0.5);
+    // 里の社 (おかの うえ。田の神さまの ほこら)
+    const satoTorii = makeTorii(0.72);
+    satoTorii.position.set(HOKORA.x, gy(HOKORA.x, HOKORA.z - 5), HOKORA.z - 5);
+    scene.add(satoTorii);
+    addRect(HOKORA.x, HOKORA.z - 5, 1.6, 0.3);
+    const hokora = new THREE.Group();
+    const hkBody = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.5, 1.2), smat(0x6a5a44));
+    hkBody.position.set(0, 0.95, 0); hkBody.castShadow = true; hokora.add(hkBody);
+    const hkRoof = new THREE.Mesh(new THREE.ConeGeometry(1.4, 0.8, 4), smat(0x4a4038));
+    hkRoof.position.set(0, 2.05, 0); hkRoof.rotation.y = Math.PI / 4; hokora.add(hkRoof);
+    const hkBase = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.35, 1.8), smat(0x8d8474));
+    hkBase.position.set(0, 0.17, 0); hokora.add(hkBase);
+    hokora.position.set(HOKORA.x, gy(HOKORA.x, HOKORA.z), HOKORA.z);
+    scene.add(hokora);
+    addRect(HOKORA.x, HOKORA.z, 1.2, 1.0);
+    for (const lx of [-2.2, 2.2]) {
+      const lan = makeStoneLantern();
+      lan.position.set(HOKORA.x + lx, gy(HOKORA.x + lx, HOKORA.z - 2.2), HOKORA.z - 2.2);
+      scene.add(lan);
+      addCircle(HOKORA.x + lx, HOKORA.z - 2.2, 0.35);
+    }
+    const satoTree = makeTree(true, 91);
+    satoTree.position.set(HOKORA.x + 5, gy(HOKORA.x + 5, HOKORA.z + 2), HOKORA.z + 2);
+    scene.add(satoTree);
+    world.trees.push({ x: HOKORA.x + 5, z: HOKORA.z + 2, big: true });
+    addCircle(HOKORA.x + 5, HOKORA.z + 2, 0.9);
+    // バス停 (みちの おわり)。ベンチと いちにち 2本の じこくひょう
+    const satoBus = makeBusStop();
+    satoBus.position.set(SATO_BUS.x, gy(SATO_BUS.x, SATO_BUS.z), SATO_BUS.z);
+    scene.add(satoBus);
+    addCircle(SATO_BUS.x, SATO_BUS.z, 0.4);
+    const busBench = makeBench();
+    busBench.position.set(SATO_BUS.x - 2.2, gy(SATO_BUS.x - 2.2, SATO_BUS.z + 0.5), SATO_BUS.z + 0.5);
+    scene.add(busBench);
+    addRect(SATO_BUS.x - 2.2, SATO_BUS.z + 0.5, 1.0, 0.45);
+    const satoMich = makeMichishirube([{ text: 'ほうじょうのさと', side: 1 }, { text: 'すえ', side: -1 }]);
+    satoMich.position.set(236, gy(236, 9.5), 9.5);
+    satoMich.rotation.y = 0.2;
+    scene.add(satoMich);
+    addCircle(236, 9.5, 0.25);
+    // 里の 木
+    for (const [tx, tz, big] of [[250, -32, 0], [292, -34, 0], [318, -30, 1], [246, 44, 0], [278, 66, 0], [322, 58, 0], [332, 32, 0], [240, 66, 1], [310, -4, 0], [288, 14, 0]]) {
+      const t = big ? makeTree(true, tx + tz) : makeTree(false, tx + tz);
+      t.position.set(tx, gy(tx, tz), tz);
+      scene.add(t);
+      world.trees.push({ x: tx, z: tz, big: !!big });
+      addCircle(tx, tz, big ? 0.9 : 0.6);
+    }
+    world.sato = { bus: SATO_BUS, hokora: HOKORA };
+  }
+
+  // =====================================================================
+  // 柏原渓谷 (かしわらけいこく): 綾川の 上流。岩の谷・淵・小さな滝・キャンプ場・温泉宿・風穴
+  // =====================================================================
+  {
+    const rc = riverCenterZ;
+    // 大岩 (谷そこに ごろごろ。みちの ある 東岸は 水ぎわだけ)
+    const rocks = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), smat(0x8a8478), 30);
+    for (let i = 0; i < 30; i++) {
+      let x = -244 - hash(i, 51) * 118;
+      let side = hash(i, 52) < 0.55 ? -1 : 1;
+      // 宿・足湯・キャンプの まえは あそぶ ばしょ。東岸の 岩は そこを さける
+      if (side > 0 && (Math.abs(x - YADO.x) < 13 || Math.abs(x - CAMP.x) < 9)) side = -1;
+      // 東岸 (みちの ある がわ) は 水ぎわだけ・小さめ。判定が 谷みち (川から 7.5〜10.5) に かからない
+      const d = side < 0 ? RIVER_HALF + 1 + hash(i, 53) * 9 : RIVER_HALF + 0.3;
+      const z = rc(x) + side * d;
+      const sc = side < 0 ? 1.1 + hash(i, 54) * 2.3 : 0.9 + hash(i, 54) * 0.5;
+      dummy.position.set(x, gy(x, z) + sc * 0.22, z);
+      dummy.rotation.set(hash(i, 55) * 3, hash(i, 56) * 3, hash(i, 57));
+      dummy.scale.setScalar(sc);
+      dummy.updateMatrix();
+      rocks.setMatrixAt(i, dummy.matrix);
+      addCircle(x, z, sc * 0.72); // 小さい岩にも 足が くいこまないように
+    }
+    rocks.castShadow = true; rocks.receiveShadow = true;
+    scene.add(rocks);
+    // 淵: 川が ふかく なる ところ (くらい みどり)
+    const fuchi = new THREE.Mesh(new THREE.CircleGeometry(RIVER_HALF + 0.3, 28), smat(0x245c66, { transparent: true, opacity: 0.88 }));
+    fuchi.rotation.x = -Math.PI / 2;
+    fuchi.position.set(FUCHI_X, waterLevel(FUCHI_X) + 0.03, rc(FUCHI_X));
+    scene.add(fuchi);
+    // 小さな滝 (川が だんに なって おちる) — 堤山の 滝と おなじ ながれる水
+    const fall2 = new THREE.Mesh(new THREE.PlaneGeometry(RIVER_HALF * 2.1, 3.4), world.fallMat);
+    fall2.position.set(GORGE_FALL_X + 1.2, waterLevel(GORGE_FALL_X + 1.2) + 1.3, rc(GORGE_FALL_X));
+    fall2.rotation.y = Math.PI / 2;
+    scene.add(fall2);
+    const foam2 = new THREE.Mesh(new THREE.CircleGeometry(3.0, 20), smat(0xe8f2f4, { transparent: true, opacity: 0.5 }));
+    foam2.rotation.x = -Math.PI / 2;
+    foam2.position.set(GORGE_FALL_X + 3.6, waterLevel(GORGE_FALL_X + 4) + 0.04, rc(GORGE_FALL_X + 3.6));
+    scene.add(foam2);
+    // キャンプ場 (東岸の ひらけた 川原): テント・たきびの あと・ベンチ
+    const tent = new THREE.Mesh(new THREE.ConeGeometry(1.7, 1.6, 4), smat(0xd8a24a));
+    tent.rotation.y = Math.PI / 4;
+    tent.position.set(CAMP.x, gy(CAMP.x, CAMP.z) + 0.8, CAMP.z);
+    tent.castShadow = true;
+    scene.add(tent);
+    addCircle(CAMP.x, CAMP.z, 1.6);
+    const ring = new THREE.Group();
+    for (let i = 0; i < 8; i++) {
+      const st = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22, 0), smat(0x7a746a));
+      st.position.set(Math.cos((i / 8) * Math.PI * 2) * 0.7, 0.12, Math.sin((i / 8) * Math.PI * 2) * 0.7);
+      ring.add(st);
+    }
+    const ash = new THREE.Mesh(new THREE.CircleGeometry(0.55, 12), smat(0x2a2622));
+    ash.rotation.x = -Math.PI / 2; ash.position.y = 0.03;
+    ring.add(ash);
+    const CF = { x: CAMP.x + 3.4, z: CAMP.z + 1.2 };
+    ring.position.set(CF.x, gy(CF.x, CF.z), CF.z);
+    scene.add(ring);
+    const campBench = makeBench();
+    campBench.position.set(CAMP.x + 6.2, gy(CAMP.x + 6.2, CAMP.z - 0.8), CAMP.z - 0.8);
+    campBench.rotation.y = Math.PI / 2;
+    scene.add(campBench);
+    addRect(CAMP.x + 6.2, CAMP.z - 0.8, 0.5, 1.0);
+    // 温泉宿「かしわら荘」: 玄関 (えんがわ) を 川の ほうへ
+    const yado = makeHouse({ w: 9, d: 5, h: 3.3, roofC: '#454550' });
+    yado.position.set(YADO.x, gy(YADO.x, YADO.z), YADO.z);
+    yado.rotation.y = Math.PI;
+    scene.add(yado);
+    addHouse(YADO.x, YADO.z, 9, 5, -1);
+    registerOccluder(yado, YADO.x, YADO.z, 7.2, gy(YADO.x, YADO.z) + 6);
+    const yadoSign = makeSignBoard('かしわらそう', { bg: '#33333d', fg: '#f4e9c8', w: 4.2, h: 0.9 });
+    yadoSign.position.set(YADO.x, gy(YADO.x, YADO.z) + 3.1, YADO.z - 3.3);
+    scene.add(yadoSign);
+    const noren2 = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.8, 0.06), smat(0x5a2a3a));
+    noren2.position.set(YADO.x, gy(YADO.x, YADO.z) + 2.15, YADO.z - 3.05);
+    scene.add(noren2);
+    // 足湯 (いしの ゆぶね。あたたかい 水いろ)
+    const tub = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 0.5, 14), smat(0x9a9488));
+    tub.position.set(ASHIYU.x, gy(ASHIYU.x, ASHIYU.z) + 0.25, ASHIYU.z);
+    scene.add(tub);
+    const yu = new THREE.Mesh(new THREE.CircleGeometry(1.45, 14), smat(0x9fd3d8, { transparent: true, opacity: 0.85, emissive: 0x2a5560 }));
+    yu.rotation.x = -Math.PI / 2;
+    yu.position.set(ASHIYU.x, gy(ASHIYU.x, ASHIYU.z) + 0.47, ASHIYU.z);
+    scene.add(yu);
+    addCircle(ASHIYU.x, ASHIYU.z, 1.8);
+    // 風穴: 東の岩壁に ぽっかり あいた 穴。つめたい かぜが ふく (口は 川の ほうを むく)
+    const cave = new THREE.Group();
+    const arch = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.5, 8, 12, Math.PI), smat(0x6e6a60));
+    arch.position.y = 1.0;
+    cave.add(arch);
+    const hole = new THREE.Mesh(new THREE.CircleGeometry(1.45, 16), new THREE.MeshBasicMaterial({ color: 0x06080a }));
+    hole.position.y = 1.0;
+    cave.add(hole);
+    cave.rotation.y = Math.PI;
+    cave.position.set(FUKETSU.x, gy(FUKETSU.x, FUKETSU.z), FUKETSU.z);
+    scene.add(cave);
+    addCircle(FUKETSU.x, FUKETSU.z + 0.6, 1.3);
+    const mist = new THREE.Group();
+    for (let i = 0; i < 6; i++) {
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.45 + hash(i, 61) * 0.5, 8, 6), smat(0xe8f4f8, { transparent: true, opacity: 0.2 }));
+      b.position.set((hash(i, 62) - 0.5) * 2.6, 0.25 + hash(i, 63) * 1.3, -(1.0 + hash(i, 64) * 2.6));
+      mist.add(b);
+    }
+    mist.position.copy(cave.position);
+    mist.userData.noMerge = true;
+    scene.add(mist);
+    world.fuketsuMist = mist;
+    // 石碑・道標
+    const keiSign = makeSignBoard('かしわら けいこく', { bg: '#5a5244', fg: '#f4e9c8', w: 4.6, h: 1.0 });
+    keiSign.position.set(-246, gy(-246, rc(-246) + 12) + 1.5, rc(-246) + 12);
+    scene.add(keiSign);
+    const gMich = makeMichishirube([{ text: 'かしわらそう', side: -1 }, { text: 'あやかみ', side: 1 }]);
+    gMich.position.set(-238, gy(-238, rc(-238) + 12), rc(-238) + 12);
+    gMich.rotation.y = 0.9;
+    scene.add(gMich);
+    addCircle(-238, rc(-238) + 12, 0.25);
+    // 岩壁の 杉林 (両岸の 斜面と 台地) — けしきだけ。虫は つかない
+    for (let i = 0; i < 74; i++) {
+      const x = -238 - hash(i, 71) * 132;
+      const side = i % 2 ? 1 : -1;
+      const dz = GORGE_FLOOR + 1.5 + hash(i, 72) * 15;
+      const z = rc(x) + side * dz;
+      const t = makePine(i + 200);
+      t.scale.setScalar(1.15 + hash(i, 73) * 0.7);
+      t.position.set(x, gy(x, z) - 0.25, z);
+      scene.add(t);
+    }
+    // 谷そこの 木 (みちの おく。ミヤマクワガタは ここにしか おらん)
+    for (let i = 0; i < 12; i++) {
+      const x = -248 - i * 10 - hash(i, 74) * 4;
+      if (Math.abs(x - YADO.x) < 8 || Math.abs(x - CAMP.x) < 6) continue;
+      const z = rc(x) + 14.2 + hash(i, 75) * 2.6;
+      const big = hash(i, 76) < 0.3;
+      const t = makeTree(big, i + 300);
+      t.position.set(x, gy(x, z), z);
+      scene.add(t);
+      world.trees.push({ x, z, big, zone: 'gorge' });
+      addCircle(x, z, big ? 0.9 : 0.6);
+    }
+    world.gorge = { camp: CAMP, campfire: CF, yado: YADO, ashiyu: ASHIYU, fuketsu: FUKETSU, fuchi: { x: FUCHI_X, z: rc(FUCHI_X) } };
+  }
+
   // 木の樹冠のカメラ遮蔽円柱を、結合まえに ワールド座標で あつめる
   {
     scene.updateMatrixWorld(true);
@@ -1588,7 +1916,11 @@ export function buildWorld(scene) {
     if (world.indoor) return null;
     const rc = riverCenterZ(x);
     const dRiver = Math.abs(z - rc);
-    if (dRiver >= RIVER_HALF + 0.4 && dRiver < RIVER_HALF + 4.5 && Math.abs(x) < 230) {
+    // 柏原渓谷は 渓流づり (アマゴ・ヤマメ・カジカ)
+    if (x < GORGE_X && dRiver >= RIVER_HALF + 0.4 && dRiver < RIVER_HALF + 5.5) {
+      return { zone: 'gorge', spot: new THREE.Vector3(x, waterLevel(x) + 0.06, rc) };
+    }
+    if (dRiver >= RIVER_HALF + 0.4 && dRiver < RIVER_HALF + 4.5 && x > -232 && x < 340) {
       if (!(x > BRIDGE_X - 3 && x < BRIDGE_X + 3) && !(x > BRIDGE2_X - 3 && x < BRIDGE2_X + 3) && !(x > BRIDGE3_X - 3 && x < BRIDGE3_X + 3)) return { zone: 'river', spot: new THREE.Vector3(x, waterLevel(x) + 0.06, rc) };
     }
     const dPond = Math.hypot(x - POND.x, z - POND.z);
