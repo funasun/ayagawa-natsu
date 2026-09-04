@@ -65,6 +65,14 @@ const COMP_FRAG = `
   uniform float uSat;
   uniform float uWarm;    // 夕方など、暖色に よせる量 (0..1)
   uniform float uDay;     // 昼らしさ (1=昼, 0=夜)。夜は 暖色かぶり/持ち上げを 弱めて 青い夜を まもる
+  uniform sampler2D tDepth;
+  uniform sampler2D tBlur;
+  uniform float uNear;
+  uniform float uFar;
+  uniform float uDofStart;
+  uniform float uDofEnd;
+  uniform float uDof;
+  uniform float uDofDebug;
   uniform float uTime;
   uniform vec2  uRes;
   varying vec2 vUv;
@@ -80,6 +88,13 @@ const COMP_FRAG = `
   void main() {
     vec3 col = texture2D(tScene, vUv).rgb;
     vec3 bl  = texture2D(tBloom, vUv).rgb;
+
+    // ⓪ 被写界深度: 深度 → 距離 に なおして、遠いほど ぼかした画を まぜる (近景は そのまま)
+    float dz = texture2D(tDepth, vUv).r * 2.0 - 1.0;
+    float dist = (2.0 * uNear * uFar) / (uFar + uNear - dz * (uFar - uNear));
+    float dof = smoothstep(uDofStart, uDofEnd, dist) * uDof;
+    col = mix(col, texture2D(tBlur, vUv).rgb, dof);
+    if (uDofDebug > 0.5) { gl_FragColor = vec4(vec3(dof), 1.0); return; }
 
     // ① ブルームを のせる (白とびを ほどよく おさえて にじませる)
     col += bl * uBloom * (1.0 - col * 0.35);
@@ -130,10 +145,14 @@ export class PostFX {
     const { w, h } = this._drawSize();
 
     // 画面バッファ: トーンマップ + sRGB 済みの 表示ピクセルを 保持 (MSAA でジャギを のこす)
+    // 深度テクスチャ: 遠景だけ ぼかす 被写界深度に つかう (MSAA の RT でも three が 解決してくれる)
+    const depthTex = new THREE.DepthTexture(w, h);
+    depthTex.type = THREE.UnsignedIntType;
     this.sceneRT = new THREE.WebGLRenderTarget(w, h, {
       depthBuffer: true,
       stencilBuffer: false,
       samples: opts.samples != null ? opts.samples : 4,
+      depthTexture: depthTex,
     });
     this.sceneRT.texture.colorSpace = THREE.SRGBColorSpace;
     this.sceneRT.texture.minFilter = THREE.LinearFilter;
@@ -144,7 +163,8 @@ export class PostFX {
     const halfOpt = { depthBuffer: false, stencilBuffer: false };
     this.rtA = new THREE.WebGLRenderTarget(hw, hh, halfOpt);
     this.rtB = new THREE.WebGLRenderTarget(hw, hh, halfOpt);
-    for (const rt of [this.rtA, this.rtB]) {
+    this.rtC = new THREE.WebGLRenderTarget(hw, hh, halfOpt); // 画面ぜんたいの ぼかし (被写界深度用)
+    for (const rt of [this.rtA, this.rtB, this.rtC]) {
       rt.texture.colorSpace = THREE.NoColorSpace;
       rt.texture.minFilter = THREE.LinearFilter;
       rt.texture.magFilter = THREE.LinearFilter;
@@ -186,6 +206,15 @@ export class PostFX {
         uSat: { value: 0.94 },
         uWarm: { value: 0.0 },
         uDay: { value: 1.0 },
+        // 被写界深度: 遠く (uDofStart〜uDofEnd) ほど ぼかしを まぜる。絵画のような 遠景に
+        tDepth: { value: null },
+        tBlur: { value: null },
+        uNear: { value: 0.1 },
+        uFar: { value: 900 },
+        uDofStart: { value: 60 },
+        uDofEnd: { value: 230 },
+        uDof: { value: 0.7 },
+        uDofDebug: { value: 0 },
         uTime: { value: 0 },
         uRes: { value: this._res.clone() },
       },
@@ -206,6 +235,7 @@ export class PostFX {
     this.sceneRT.setSize(w, h);
     this.rtA.setSize(hw, hh);
     this.rtB.setSize(hw, hh);
+    this.rtC.setSize(hw, hh);
     this._texel.set(1 / hw, 1 / hh);
     this.compMat.uniforms.uRes.value.set(w, h);
   }
@@ -251,10 +281,28 @@ export class PostFX {
       r.render(this.fsScene, this.fsCam);
     }
 
+    // 3.5) 画面ぜんたいを 半解像度で ぼかす (被写界深度の 遠景用): コピー → よこ → たて
+    this.blurMat.uniforms.tDiffuse.value = this.sceneRT.texture;
+    this.blurMat.uniforms.dir.value.set(0, 0);
+    r.setRenderTarget(this.rtC);
+    r.render(this.fsScene, this.fsCam);
+    this.blurMat.uniforms.tDiffuse.value = this.rtC.texture;
+    this.blurMat.uniforms.dir.value.set(tx * 1.7, 0);
+    r.setRenderTarget(this.rtB);
+    r.render(this.fsScene, this.fsCam);
+    this.blurMat.uniforms.tDiffuse.value = this.rtB.texture;
+    this.blurMat.uniforms.dir.value.set(0, ty * 1.7);
+    r.setRenderTarget(this.rtC);
+    r.render(this.fsScene, this.fsCam);
+
     // 4) 合成して 画面へ
     this.quad.material = this.compMat;
     this.compMat.uniforms.tScene.value = this.sceneRT.texture;
     this.compMat.uniforms.tBloom.value = this.rtA.texture;
+    this.compMat.uniforms.tDepth.value = this.sceneRT.depthTexture;
+    this.compMat.uniforms.tBlur.value = this.rtC.texture;
+    this.compMat.uniforms.uNear.value = camera.near;
+    this.compMat.uniforms.uFar.value = camera.far;
     this.compMat.uniforms.uTime.value = time || 0;
     r.setRenderTarget(null);
     r.render(this.fsScene, this.fsCam);

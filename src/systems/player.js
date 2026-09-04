@@ -22,6 +22,7 @@ export class Player {
     this.camPos = new THREE.Vector3();
     this.lookUpT = 0;
     this.vistaT = 0; // 絵になる場所で 立ちどまっている 時間
+    this.blinkT = 2; this.blinkOn = 0; // まばたき
     // カメラの向き (0 = 南から北をみる)。ドラッグや Q/R キーで 360度まわせる
     this.camYaw = 0;
     // 僕夏ふうの「低く・寄った・見下ろしすぎない」追従カメラ。
@@ -144,6 +145,12 @@ export class Player {
     this.parts.armR.rotation.x = -sw;
     this.parts.legL.rotation.x = -sw;
     this.parts.legR.rotation.x = sw;
+    // まばたき (2.5〜6秒に いちど、0.12秒)
+    if (this.parts.eyes) {
+      this.blinkT -= dt;
+      if (this.blinkT <= 0) { this.blinkT = 2.5 + Math.random() * 3.5; this.blinkOn = 0.12; }
+      if (this.blinkOn > 0) { this.blinkOn -= dt; this.parts.eyes.scale.y = 0.12; } else this.parts.eyes.scale.y = 1;
+    }
     const gyFn = this.world.groundY;
     const gy = gyFn ? gyFn(this.pos.x, this.pos.z) : 0;
     // 斜面では 描画メッシュ (2mグリッド) と 解析地形が ずれて 足が うまるので、勾配ぶん すこし もちあげる

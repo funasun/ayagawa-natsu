@@ -769,59 +769,101 @@ export function makeCar(color = 0xd0d4d8) {
 
 // ---------- 人物 (まるっこい ちび姿) ----------
 export function makePerson({ body = 0x4488cc, head = 0xf3cba4, hat = null, hair = 0x2a2018, scale = 1, elder = false } = {}) {
+  // 僕夏ふうの ずんぐりした 体型: おおきめの あたま・みじかくて ふとい てあし・まるい てと あし。
+  // 表情は 子ども (scale<1) = おおきな えがおと あかい ほっぺ / おとな = やさしい ほほえみ /
+  // おとしより = めを ほそめた わらいじわ。parts.eyes は まばたき用
   const g = new THREE.Group();
   const parts = {};
+  const kid = scale < 0.95;
   const skin = smat(head);
+  const dark = smat(0x40342a);
 
-  const bodyM = m(new THREE.CapsuleGeometry(0.34, 0.42, 4, 10), smat(body), 0, 0.95, 0);
+  // 胴 (すこし たるに ちかい まるみ)
+  const bodyM = m(new THREE.CapsuleGeometry(0.37, 0.34, 4, 12), smat(body), 0, 0.98, 0);
+  bodyM.scale.set(1.04, 1, 0.94);
   bodyM.castShadow = true;
   g.add(bodyM); parts.body = bodyM;
+  // えりもと (シャツの えり)
+  const collar = m(new THREE.TorusGeometry(0.2, 0.035, 6, 14), smat(0xffffff), 0, 1.4, 0.02);
+  collar.rotation.x = Math.PI / 2;
+  g.add(collar);
+  if (elder) { // かっぽうぎ (まえかけ)
+    const apron = m(new THREE.BoxGeometry(0.48, 0.5, 0.06), smat(0xf2ede4), 0, 0.86, 0.34);
+    g.add(apron);
+  }
 
-  const headM = m(new THREE.SphereGeometry(0.4, 14, 12), skin, 0, 1.72, 0);
-  headM.scale.set(1, 0.95, 0.95);
+  // あたま (おおきめ・ほんのり たまごがた)
+  const headM = m(new THREE.SphereGeometry(0.44, 16, 14), skin, 0, 1.74, 0);
+  headM.scale.set(1, 0.94, 0.96);
   headM.castShadow = true;
   g.add(headM); parts.head = headM;
-
   // 髪 (おかっぱ気味に頭を包む)
-  const hairM = m(new THREE.SphereGeometry(0.42, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), smat(hair), 0, 1.76, -0.02);
+  const hairM = m(new THREE.SphereGeometry(0.46, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.6), smat(hair), 0, 1.78, -0.02);
   g.add(hairM);
-
   if (hat != null) {
-    g.add(m(new THREE.SphereGeometry(0.43, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), smat(hat), 0, 1.84, 0));
-    const brim = m(new THREE.CylinderGeometry(0.55, 0.58, 0.04, 14), smat(hat), 0, 1.88, 0.05);
+    g.add(m(new THREE.SphereGeometry(0.47, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), smat(hat), 0, 1.86, 0));
+    const brim = m(new THREE.CylinderGeometry(0.6, 0.63, 0.04, 16), smat(hat), 0, 1.9, 0.06);
     g.add(brim);
   }
-  // 顔 (目・ほっぺ・にっこりした口。こわくならないよう、目は低め・口は必ずつける)
-  const dark = smat(0x40342a);
+
+  // 顔
+  const eyes = new THREE.Group();
+  eyes.position.y = 1.71;
+  g.add(eyes); parts.eyes = eyes;
   for (const sx of [-1, 1]) {
     if (elder) {
-      // おとしよりは「にっこり細目」(下向きの弧)
-      const eye = m(new THREE.TorusGeometry(0.062, 0.016, 5, 10, Math.PI * 0.75), dark, sx * 0.16, 1.665, 0.335);
+      const eye = m(new THREE.TorusGeometry(0.066, 0.017, 5, 10, Math.PI * 0.75), dark, sx * 0.17, 1.7, 0.375);
       eye.rotation.z = Math.PI * 0.125;
       g.add(eye);
+      // わらいじわ
+      const shiwa = m(new THREE.TorusGeometry(0.05, 0.01, 4, 8, Math.PI * 0.6), dark, sx * 0.3, 1.66, 0.33);
+      shiwa.rotation.z = sx > 0 ? Math.PI * 0.9 : Math.PI * 0.5;
+      g.add(shiwa);
     } else {
-      g.add(m(new THREE.SphereGeometry(0.052, 8, 6), dark, sx * 0.16, 1.69, 0.335));
-      g.add(m(new THREE.SphereGeometry(0.016, 5, 4), smat(0xffffff), sx * 0.16 + 0.018, 1.705, 0.378));
+      const eye = m(new THREE.SphereGeometry(0.056, 8, 8), dark, sx * 0.165, 0, 0.37);
+      eye.scale.set(1, kid ? 1.4 : 1.2, 0.6);
+      eyes.add(eye);
+      const hi = m(new THREE.SphereGeometry(0.018, 5, 4), smat(0xffffff), sx * 0.165 + 0.02, 0.025, 0.405);
+      eyes.add(hi);
     }
-    g.add(m(new THREE.SphereGeometry(0.042, 6, 5), smat(0xf4b49c), sx * 0.245, 1.615, 0.295));
+    // まゆ (子どもは ちょっと あがった げんきな まゆ)
+    const brow = m(new THREE.BoxGeometry(0.11, 0.022, 0.02), smat(elder ? 0x777066 : 0x3a2e24), sx * 0.17, 1.83, 0.365);
+    brow.rotation.z = sx * (kid ? -0.28 : -0.1);
+    g.add(brow);
+    // ほっぺ (子どもは おおきく あかく)
+    g.add(m(new THREE.SphereGeometry(kid ? 0.062 : 0.044, 7, 6), smat(kid ? 0xf2a08a : 0xf4b49c), sx * 0.26, 1.63, 0.325));
   }
-  // 口 (上向きの弧 = ほほえみ)
-  const mouth = m(new THREE.TorusGeometry(0.055, 0.014, 5, 10, Math.PI * 0.8), dark, 0, 1.60, 0.345);
-  mouth.rotation.z = Math.PI + Math.PI * 0.1;
+  // はな (ちいさな てん)
+  g.add(m(new THREE.SphereGeometry(0.03, 6, 5), smat(0xe6b48e), 0, 1.65, 0.43));
+  // 口 (上向きの弧 = ほほえみ。子どもは おおきく)
+  const mouth = m(new THREE.TorusGeometry(kid ? 0.08 : 0.058, 0.015, 5, 12, Math.PI * (kid ? 0.95 : 0.8)), dark, 0, kid ? 1.575 : 1.585, 0.385);
+  mouth.rotation.z = Math.PI + Math.PI * (kid ? 0.025 : 0.1);
   g.add(mouth);
 
-  const mkLimb = (r, h2, c, x, y) => {
-    const geo = new THREE.CapsuleGeometry(r, h2, 3, 8);
+  // てあし: みじかく ふとく。さきに まるい てと くつ (子どもは 半ズボンで ひざが みえる)
+  const mkLimb = (r, h2, c, x, y, tip, tipCol) => {
+    const geo = new THREE.CapsuleGeometry(r, h2, 3, 10);
     geo.translate(0, -h2 / 2, 0);
     const limb = m(geo, smat(c), x, y, 0);
     limb.castShadow = true;
+    const t = m(new THREE.SphereGeometry(tip, 8, 7), smat(tipCol), 0, -h2 - tip * 0.55, 0);
+    limb.add(t);
     g.add(limb);
     return limb;
   };
-  parts.armL = mkLimb(0.1, 0.42, head, -0.42, 1.3);
-  parts.armR = mkLimb(0.1, 0.42, head, 0.42, 1.3);
-  parts.legL = mkLimb(0.12, 0.4, 0x3a4a5e, -0.16, 0.52);
-  parts.legR = mkLimb(0.12, 0.4, 0x3a4a5e, 0.16, 0.52);
+  parts.armL = mkLimb(0.11, 0.32, body, -0.45, 1.34, 0.115, head);
+  parts.armR = mkLimb(0.11, 0.32, body, 0.45, 1.34, 0.115, head);
+  const pants = kid ? 0x3a4a5e : elder ? 0x5a4a62 : 0x3a4a5e;
+  parts.legL = mkLimb(0.13, 0.3, pants, -0.17, 0.5, 0.135, 0x2b2622);
+  parts.legR = mkLimb(0.13, 0.3, pants, 0.17, 0.5, 0.135, 0x2b2622);
+  // くつは すこし ひらたく
+  for (const l of [parts.legL, parts.legR]) l.children[0].scale.set(1.15, 0.7, 1.35);
+  if (kid) { // ひざから したは はだ (半ズボン)
+    for (const [l, sx] of [[parts.legL, -1], [parts.legR, 1]]) {
+      const shin = m(new THREE.CapsuleGeometry(0.11, 0.1, 3, 8), skin, 0, -0.34, 0);
+      l.add(shin);
+    }
+  }
   g.scale.setScalar(scale);
   return { group: g, parts };
 }

@@ -286,6 +286,12 @@ export class NpcSystem {
         npc.parts.legL.rotation.x = 0;
         npc.parts.legR.rotation.x = 0;
       }
+      // まばたき (2.5〜6秒に いちど。おとしよりは 細目なので なし)
+      if (npc.parts.eyes) {
+        npc.blinkT = (npc.blinkT ?? 1 + Math.random() * 4) - dt;
+        if (npc.blinkT <= 0) { npc.blinkT = 2.5 + Math.random() * 3.5; npc.blinkOn = 0.12; }
+        if (npc.blinkOn > 0) { npc.blinkOn -= dt; npc.parts.eyes.scale.y = 0.12; } else npc.parts.eyes.scale.y = 1;
+      }
 
       // 近いと目を合わせる
       if (d < 4) {
